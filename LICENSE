@@ -1,0 +1,37 @@
+MIT License with Responsible Use Rider
+
+Copyright (c) 2026 Pedro Shuker
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+RESPONSIBLE USE RIDER (binding condition of this licence):
+
+This Software is an offensive security tool. Use of this Software is permitted
+only against systems that you own, or for which you have obtained explicit,
+written authorisation from the system owner prior to testing. Use against any
+system without such authorisation is strictly prohibited under the terms of
+this licence and is illegal under applicable law, including but not limited to
+the Computer Fraud and Abuse Act (US), the Computer Misuse Act 1990 (UK), and
+equivalent legislation in other jurisdictions.
+
+Permitted uses include: authorised penetration testing engagements, personal
+lab environments, Capture The Flag (CTF) competitions, academic research, and
+security education using legal practice targets (e.g. DVWA, OWASP Juice Shop,
+PortSwigger Academy).
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE. THE AUTHORS ACCEPT NO LIABILITY FOR ANY MISUSE OF THIS SOFTWARE OR
+FOR USE OF THIS SOFTWARE OUTSIDE THE PERMITTED USES DEFINED ABOVE.

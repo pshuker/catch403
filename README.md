@@ -2,7 +2,7 @@
 
 A Python-native web application security testing platform. Intercept, inspect, and attack HTTP/HTTPS traffic through a dark-themed browser UI — no Java, no licence fees, no rate-throttled Intruder.
 
-![Python](https://img.shields.io/badge/python-3.11+-blue) ![Tests](https://img.shields.io/badge/tests-170%20passing-4ec9a5) ![Modules](https://img.shields.io/badge/modules-50-4c8dff) ![License](https://img.shields.io/badge/license-Authorised%20Use%20Only-red)
+![Python](https://img.shields.io/badge/python-3.11+-blue) ![Tests](https://img.shields.io/badge/tests-170%20passing-4ec9a5) ![Modules](https://img.shields.io/badge/modules-50-4c8dff) ![License](https://img.shields.io/badge/license-MIT%20%2B%20Responsible%20Use-red)
 
 ---
 
