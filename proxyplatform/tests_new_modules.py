@@ -700,6 +700,194 @@ test("ldap error string detection",         _test_ldap_error_detection)
 test("ldap blind boolean payloads",         _test_ldap_blind_payloads)
 test("ldap bypass has wildcard payload",    _test_ldap_bypass_has_wildcard)
 
+# ── finding_tracker ────────────────────────────────────────────────────────
+
+import tempfile
+from modules.finding_tracker import FindingTracker, CONFIRMED, FALSE_POSITIVE, PENDING, FIXED
+
+def _temp_tracker():
+    return FindingTracker(tempfile.mktemp(suffix=".db"))
+
+def _test_tracker_add_and_get():
+    db = _temp_tracker()
+    fid = db.add({"name": "XSS", "severity": "high", "detail": "reflected", "url": "https://t.com"}, "active_scan")
+    f = db.get(fid)
+    assert_eq(f["name"], "XSS")
+    assert_eq(f["severity"], "high")
+    assert_eq(f["status"], PENDING)
+    assert_eq(f["source_module"], "active_scan")
+
+def _test_tracker_status_update():
+    db = _temp_tracker()
+    fid = db.add({"name": "SQLi", "severity": "critical", "detail": "x"})
+    db.update_status(fid, CONFIRMED, "Verified")
+    f = db.get(fid)
+    assert_eq(f["status"], CONFIRMED)
+    assert_true("Verified" in f["notes"])
+
+def _test_tracker_notes_append():
+    db = _temp_tracker()
+    fid = db.add({"name": "SQLi", "severity": "critical", "detail": "x"})
+    db.add_note(fid, "First note")
+    db.update_status(fid, CONFIRMED, "Second note")
+    f = db.get(fid)
+    assert_true("First note" in f["notes"])
+    assert_true("Second note" in f["notes"])
+
+def _test_tracker_tags():
+    db = _temp_tracker()
+    fid = db.add({"name": "CORS", "severity": "high", "detail": "x"})
+    db.add_tag(fid, "waf-bypass")
+    db.add_tag(fid, "prod")
+    f = db.get(fid)
+    assert_true("waf-bypass" in f["tags"])
+    assert_true("prod" in f["tags"])
+
+def _test_tracker_query_filter():
+    db = _temp_tracker()
+    db.add({"name": "A", "severity": "critical"})
+    db.add({"name": "B", "severity": "info"})
+    crits = db.query(severity="critical")
+    assert_eq(len(crits), 1)
+    assert_eq(crits[0]["name"], "A")
+
+def _test_tracker_stats():
+    db = _temp_tracker()
+    db.add({"name": "A", "severity": "critical"})
+    db.add({"name": "B", "severity": "high"})
+    db.add({"name": "C", "severity": "high"})
+    s = db.stats()
+    assert_eq(s["total"], 3)
+    assert_eq(s["by_severity"].get("critical", 0), 1)
+    assert_eq(s["by_severity"].get("high", 0), 2)
+
+def _test_tracker_import_export():
+    import json as _json
+    db = _temp_tracker()
+    db.add({"name": "XSS", "severity": "high", "detail": "reflected"})
+    out = tempfile.mktemp(suffix=".json")
+    n = db.export_json(out)
+    assert_eq(n, 1)
+    db2 = _temp_tracker()
+    imported = db2.import_json(out, "test")
+    assert_eq(imported, 1)
+    import os; os.unlink(out)
+
+def _test_tracker_meta_skipped():
+    db = _temp_tracker()
+    fid = db.add({"name": "_raw", "severity": "meta", "detail": "..."})
+    assert_eq(fid, -1)
+
+test("tracker add and get",               _test_tracker_add_and_get)
+test("tracker status update",             _test_tracker_status_update)
+test("tracker notes append on update",    _test_tracker_notes_append)
+test("tracker tags",                      _test_tracker_tags)
+test("tracker query filter by severity",  _test_tracker_query_filter)
+test("tracker stats",                     _test_tracker_stats)
+test("tracker import/export JSON",        _test_tracker_import_export)
+test("tracker meta findings skipped",     _test_tracker_meta_skipped)
+
+# ── report_generator ───────────────────────────────────────────────────────
+
+from modules.report_generator import generate, _remediation_for, _SEV_COLOUR, _chart_bars
+
+_SAMPLE_FINDINGS = [
+    {"name": "SQL Injection", "severity": "critical", "detail": "id param injectable",
+     "url": "https://target.com/page?id=1", "status": "confirmed"},
+    {"name": "CORS Misconfig", "severity": "high",     "detail": "origin reflected", "status": "pending"},
+    {"name": "Missing HSTS",   "severity": "medium",   "detail": "No HSTS",          "status": "pending"},
+    {"name": "_raw",           "severity": "meta",     "detail": "raw output"},
+]
+
+def _test_report_generates():
+    out = tempfile.mktemp(suffix=".html")
+    generate(_SAMPLE_FINDINGS, target="Acme", output=out)
+    import os
+    size = os.path.getsize(out); os.unlink(out)
+    assert_true(size > 5000)
+
+def _test_report_excludes_meta():
+    out = tempfile.mktemp(suffix=".html")
+    generate(_SAMPLE_FINDINGS, output=out)
+    import os
+    with open(out) as fh: content = fh.read()
+    os.unlink(out)
+    assert_true("_raw" not in content)
+
+def _test_report_status_filter():
+    out = tempfile.mktemp(suffix=".html")
+    generate(_SAMPLE_FINDINGS, output=out, status_filter="confirmed")
+    import os
+    with open(out) as fh: content = fh.read()
+    os.unlink(out)
+    assert_true("SQL Injection" in content)
+    assert_true("CORS" not in content)
+
+def _test_remediation_lookup():
+    rem = _remediation_for({"name": "SQL Injection — parameter id"})
+    assert_true("parameteris" in rem.lower() or "prepared" in rem.lower())
+
+def _test_remediation_fallback():
+    rem = _remediation_for({"name": "Unknown Weird Finding"})
+    assert_true(len(rem) > 20)
+
+def _test_chart_bars():
+    bars = _chart_bars({"critical": 2, "high": 1})
+    assert_true("CRITICAL" in bars)
+    assert_true("HIGH" in bars)
+
+def _test_sev_colours_populated():
+    for sev in ("critical", "high", "medium", "low", "info"):
+        assert_true(sev in _SEV_COLOUR)
+
+test("report generates HTML",             _test_report_generates)
+test("report excludes meta findings",     _test_report_excludes_meta)
+test("report status filter works",        _test_report_status_filter)
+test("report remediation lookup",         _test_remediation_lookup)
+test("report remediation fallback",       _test_remediation_fallback)
+test("report chart bars render",          _test_chart_bars)
+test("report severity colours complete",  _test_sev_colours_populated)
+
+# ── ai_assist ──────────────────────────────────────────────────────────────
+
+from modules.ai_assist import _load_api_key, save_api_key, _SYSTEM, MODEL
+
+def _test_ai_model_name():
+    assert_true("sonnet" in MODEL or "claude" in MODEL)
+
+def _test_ai_system_prompt():
+    assert_true("penetration tester" in _SYSTEM.lower())
+    assert_true(len(_SYSTEM) > 200)
+
+def _test_ai_key_roundtrip():
+    import json as _json
+    cfg = tempfile.mktemp(suffix=".json")
+    # patch config path temporarily
+    import modules.ai_assist as _m
+    orig = _m._CONFIG_PATH
+    _m._CONFIG_PATH = cfg
+    save_api_key("sk-ant-test-key-123")
+    key = _load_api_key()
+    _m._CONFIG_PATH = orig
+    import os; os.unlink(cfg)
+    assert_eq(key, "sk-ant-test-key-123")
+
+def _test_ai_no_key_returns_empty():
+    import modules.ai_assist as _m
+    orig_env = os.environ.pop("ANTHROPIC_API_KEY", None)
+    orig_cfg = _m._CONFIG_PATH
+    _m._CONFIG_PATH = "/tmp/nonexistent_catch403_config.json"
+    key = _load_api_key()
+    _m._CONFIG_PATH = orig_cfg
+    if orig_env:
+        os.environ["ANTHROPIC_API_KEY"] = orig_env
+    assert_eq(key, "")
+
+test("ai model is claude-sonnet",         _test_ai_model_name)
+test("ai system prompt is security-focused", _test_ai_system_prompt)
+test("ai key save/load roundtrip",        _test_ai_key_roundtrip)
+test("ai no key returns empty string",    _test_ai_no_key_returns_empty)
+
 # ── summary ────────────────────────────────────────────────────────────────
 print(f"\n{passed} passed, {failed} failed\n")
 if failed:
