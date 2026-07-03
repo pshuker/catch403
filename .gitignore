@@ -30,3 +30,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Vendor — track as a plain directory, not a submodule
+# Update with: git -C vendor/sqlmap pull
+vendor/sqlmap/.git

@@ -376,9 +376,10 @@ def _test_sqlmap_payloads():
     assert_true(len(inj.get("payloads", [])) >= 2)
 
 def _test_sqlmap_bin():
-    path = _sqlmap_bin()
-    assert_true("sqlmap" in path)
-    assert_true(os.path.isfile(path))
+    cmd, label = _sqlmap_bin()
+    assert_true(isinstance(cmd, list))
+    assert_true("sqlmap" in " ".join(cmd))
+    assert_true(isinstance(label, str) and len(label) > 0)
 
 def _test_sqlmap_post_param():
     log = "[INFO] POST parameter 'username' appears to be 'time-based blind' injectable"

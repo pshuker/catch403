@@ -28,18 +28,40 @@ from core.colors import bold, end, good, bad, info, run
 
 # ── sqlmap binary location ─────────────────────────────────────────────────
 
-def _sqlmap_bin() -> str:
-    """Return path to sqlmap binary, searching venv then PATH."""
-    # Try venv-relative first (most reliable inside the platform)
-    here = os.path.dirname(os.path.abspath(__file__))
-    venv_bin = os.path.join(here, "..", "..", ".venv", "bin", "sqlmap")
+_HERE = os.path.dirname(os.path.abspath(__file__))
+
+# Vendored GitHub clone is preferred — always latest HEAD.
+# Fall back to venv pip install, then system PATH.
+_VENDOR_SQLMAP = os.path.abspath(
+    os.path.join(_HERE, "..", "..", "vendor", "sqlmap", "sqlmap.py")
+)
+
+
+def _sqlmap_bin() -> tuple[list[str], str]:
+    """
+    Return (command_prefix, version_label) for the best available sqlmap.
+
+    Vendored GitHub clone is preferred over pip install — it tracks HEAD
+    and is updated with `git pull vendor/sqlmap`.
+    """
+    if os.path.isfile(_VENDOR_SQLMAP):
+        return ([sys.executable, _VENDOR_SQLMAP], "vendor/sqlmap (GitHub HEAD)")
+
+    venv_bin = os.path.abspath(
+        os.path.join(_HERE, "..", "..", ".venv", "bin", "sqlmap")
+    )
     if os.path.isfile(venv_bin):
-        return os.path.abspath(venv_bin)
+        return ([venv_bin], "pip install sqlmap")
+
     found = shutil.which("sqlmap")
     if found:
-        return found
+        return ([found], "system sqlmap")
+
     raise RuntimeError(
-        "sqlmap not found. Install with:  .venv/bin/pip install sqlmap"
+        "sqlmap not found.\n"
+        "  Option A (recommended): clone from GitHub into vendor/\n"
+        "    git clone --depth=1 https://github.com/sqlmapproject/sqlmap.git vendor/sqlmap\n"
+        "  Option B: pip install sqlmap"
     )
 
 
@@ -172,11 +194,11 @@ def scan(
     Parameters mirror common sqlmap CLI flags. All runs use --batch so no
     interactive prompts appear.
     """
-    sqlmap = _sqlmap_bin()
+    sqlmap_cmd, _source = _sqlmap_bin()
     tmp = tempfile.mkdtemp(prefix="catch403_sqlmap_")
 
     cmd = [
-        sqlmap,
+        *sqlmap_cmd,
         "-u", url,
         "--batch",
         "--output-dir", tmp,
@@ -302,7 +324,8 @@ def main():
     print()
 
     try:
-        sqlmap_bin = _sqlmap_bin()
+        _, source_label = _sqlmap_bin()
+        print(f"{info} Using: {source_label}")
     except RuntimeError as e:
         print(f"{bad} {e}")
         sys.exit(1)
