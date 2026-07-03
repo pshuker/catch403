@@ -388,6 +388,135 @@ def _test_sqlmap_post_param():
     assert_true(len(inj) == 1)
     assert_true("username" in inj[0]["name"])
 
+# ── commix_scanner ────────────────────────────────────────────────────────
+
+from modules.commix_scanner import _parse_output, _commix_bin
+
+def _test_commix_injectable():
+    log = "[+] Parameter 'cmd' appears to be injectable via classic command injection"
+    f = _parse_output(log)
+    inj = [x for x in f if x["severity"] == "critical"]
+    assert_true(len(inj) == 1)
+    assert_true("cmd" in inj[0]["name"])
+
+def _test_commix_not_injectable():
+    log = "All tested HTTP headers appear to be not injectable."
+    f = _parse_output(log)
+    assert_true(any(x["name"] == "Not injectable" for x in f))
+
+def _test_commix_os_shell():
+    log = "[+] OS shell obtained via eval-based command injection"
+    f = _parse_output(log)
+    assert_true(any("OS Shell" in x["name"] for x in f))
+
+def _test_commix_payloads():
+    log = "[+] Parameter 'id' appears to be injectable via time-based command injection\n[payload] ;sleep 5;"
+    f = _parse_output(log)
+    inj = next((x for x in f if x["severity"] == "critical"), None)
+    assert_true(inj is not None)
+    assert_true(len(inj.get("payloads", [])) >= 1)
+
+def _test_commix_bin():
+    cmd, label = _commix_bin()
+    assert_true(isinstance(cmd, list))
+    assert_true("commix" in " ".join(cmd))
+    assert_true(len(label) > 0)
+
+test("commix parse injectable param",     _test_commix_injectable)
+test("commix parse not injectable",       _test_commix_not_injectable)
+test("commix parse OS shell obtained",    _test_commix_os_shell)
+test("commix payloads attached",          _test_commix_payloads)
+test("commix bin resolves to vendor",     _test_commix_bin)
+
+# ── wapiti_scanner ────────────────────────────────────────────────────────
+
+from modules.wapiti_scanner import _parse_report, _wapiti_bin, _SEV_ORDER
+
+def _test_wapiti_parse_vuln():
+    report = {
+        "vulnerabilities": {
+            "sql": [{"level": 3, "info": "SQLi in param id", "path": "/page?id=1",
+                     "parameter": "id", "method": "GET", "http_request": "", "curl_command": ""}]
+        },
+        "anomalies": {},
+        "infos": {},
+    }
+    findings = _parse_report(report)
+    assert_true(len(findings) == 1)
+    assert_eq(findings[0]["severity"], "high")
+    assert_true("SQL" in findings[0]["name"])
+
+def _test_wapiti_parse_anomaly():
+    report = {
+        "vulnerabilities": {},
+        "anomalies": {
+            "xss": [{"info": "Reflected anomaly", "path": "/search?q=test"}]
+        },
+        "infos": {},
+    }
+    findings = _parse_report(report)
+    assert_true(any("Anomaly" in f["name"] for f in findings))
+
+def _test_wapiti_sev_order():
+    assert_true(_SEV_ORDER["critical"] < _SEV_ORDER["high"] < _SEV_ORDER["info"])
+
+def _test_wapiti_empty_report():
+    findings = _parse_report({"vulnerabilities": {}, "anomalies": {}, "infos": {}})
+    assert_eq(findings, [])
+
+def _test_wapiti_bin():
+    cmd, label = _wapiti_bin()
+    assert_true(isinstance(cmd, list))
+    assert_true("wapiti" in " ".join(cmd))
+
+test("wapiti parse vulnerability finding",   _test_wapiti_parse_vuln)
+test("wapiti parse anomaly finding",         _test_wapiti_parse_anomaly)
+test("wapiti severity order correct",        _test_wapiti_sev_order)
+test("wapiti empty report = no findings",    _test_wapiti_empty_report)
+test("wapiti bin found in venv",             _test_wapiti_bin)
+
+# ── nosql_scanner ─────────────────────────────────────────────────────────
+
+from modules.nosql_scanner import (
+    AUTH_BYPASS_JSON, MONGO_OPERATOR_PAYLOADS, BLIND_TRUE, BLIND_FALSE,
+    _is_json_endpoint, _looks_like_success,
+)
+
+def _test_nosql_payloads_populated():
+    assert_true(len(AUTH_BYPASS_JSON) >= 4)
+    assert_true(len(MONGO_OPERATOR_PAYLOADS) >= 5)
+    assert_true(len(BLIND_TRUE) == len(BLIND_FALSE))
+
+def _test_nosql_looks_like_success_status():
+    class _R:
+        def __init__(self, status, text): self.status_code = status; self.text = text
+    assert_true(_looks_like_success(_R(200, "ok"), 403, 100))
+    assert_true(not _looks_like_success(_R(403, "x" * 100), 403, 100))
+
+def _test_nosql_looks_like_success_body():
+    class _R:
+        def __init__(self, status, text): self.status_code = status; self.text = text
+    # Same status but body grew >30% = suspicious
+    assert_true(_looks_like_success(_R(200, "x" * 200), 200, 100))
+
+def _test_nosql_ne_payload():
+    ne = next((p for p in MONGO_OPERATOR_PAYLOADS if "$ne" in p), None)
+    assert_true(ne is not None)
+
+def _test_nosql_gt_payload():
+    gt = next((p for p in MONGO_OPERATOR_PAYLOADS if "$gt" in p), None)
+    assert_true(gt is not None)
+
+test("nosql payload banks populated",        _test_nosql_payloads_populated)
+test("nosql success detection by status",    _test_nosql_looks_like_success_status)
+test("nosql success detection by body diff", _test_nosql_looks_like_success_body)
+test("nosql $ne operator in payloads",       _test_nosql_ne_payload)
+test("nosql $gt operator in payloads",       _test_nosql_gt_payload)
+
+# ── sqlmap_scanner ─────────────────────────────────────────────────────────
+
+from modules.sqlmap_scanner import _parse_log, _sqlmap_bin
+
 test("sqlmap parse injectable param",    _test_sqlmap_injectable)
 test("sqlmap parse not injectable",      _test_sqlmap_not_injectable)
 test("sqlmap parse dbms fingerprint",    _test_sqlmap_dbms)

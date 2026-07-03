@@ -1,3 +1,6 @@
 [submodule "vendor/sqlmap"]
 	path = vendor/sqlmap
 	url = https://github.com/sqlmapproject/sqlmap.git
+[submodule "vendor/commix"]
+	path = vendor/commix
+	url = https://github.com/commixproject/commix.git
