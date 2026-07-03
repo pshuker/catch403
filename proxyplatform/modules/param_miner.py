@@ -19,6 +19,7 @@ from bs4 import BeautifulSoup
 from core.colors import bold, underline, end, red, green, run, good, bad, info, que, tab
 
 DEFAULT_WORDLIST = os.path.join(os.path.dirname(__file__), "common-params.txt")
+_REGISTRY_DEFAULT = "params"   # wordlists registry key
 
 DEFAULT_HEADERS = {
     "User-Agent":      "Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0",
@@ -35,7 +36,7 @@ def _page_length(url: str, headers: dict) -> int:
     return len(BeautifulSoup(r.content, "lxml").text)
 
 
-def mine(url: str, wordlist: str = DEFAULT_WORDLIST,
+def mine(url: str, wordlist: str | list[str] = DEFAULT_WORDLIST,
          headers: dict | None = None, json_data: bool = False) -> list[str]:
     h = dict(DEFAULT_HEADERS)
     if headers:
@@ -43,8 +44,11 @@ def mine(url: str, wordlist: str = DEFAULT_WORDLIST,
     if json_data:
         h["Content-Type"] = "application/json"
 
-    with open(wordlist, encoding="utf-8") as f:
-        params = [line.strip() for line in f if line.strip()]
+    if isinstance(wordlist, list):
+        params = wordlist
+    else:
+        with open(wordlist, encoding="utf-8") as f:
+            params = [line.strip() for line in f if line.strip()]
 
     print(f"{run} {bold}Injecting {len(params)} params into{end}: {url}")
     baseline = _page_length(url, h)
@@ -66,10 +70,11 @@ def mine(url: str, wordlist: str = DEFAULT_WORDLIST,
 
 
 def main():
+    from modules.wordlists import WL, add_wordlist_arg
     parser = argparse.ArgumentParser(description="Discover hidden HTTP parameters via wordlist injection")
     parser.add_argument("-u",       dest="url",      help="Target URL")
     parser.add_argument("--urls",   dest="url_file", help="File of target URLs (one per line)")
-    parser.add_argument("-f",       dest="wordlist", default=DEFAULT_WORDLIST, help="Param wordlist file")
+    add_wordlist_arg(parser, "params", flag="-f", dest="wordlist")
     parser.add_argument("-o",       dest="output",   default="found_params.json", help="JSON output file")
     parser.add_argument("--json",   dest="json_data", action="store_true", help="Send POST data as JSON")
     parser.add_argument("--header", dest="headers",  nargs="*", help="Extra headers (key:value)")
@@ -91,9 +96,10 @@ def main():
     if not urls:
         parser.error("Provide -u URL or --urls file.")
 
+    wl = WL.resolve(args.wordlist, "params") if args.wordlist else WL.params()
     results = {}
     for url in urls:
-        results[url] = mine(url, args.wordlist, extra_headers, args.json_data)
+        results[url] = mine(url, wl, extra_headers, args.json_data)
 
     with open(args.output, "w") as f:
         json.dump(results, f, indent=4)

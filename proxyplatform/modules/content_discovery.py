@@ -202,9 +202,10 @@ def _print_result(r: dict):
 
 
 def main():
+    from modules.wordlists import WL, add_wordlist_arg
     parser = argparse.ArgumentParser(description="Directory and file brute-forcer")
     parser.add_argument("-u",  dest="url",       required=True, help="Target base URL")
-    parser.add_argument("-w",  dest="wordlist",  help="Wordlist file (default: built-in)")
+    add_wordlist_arg(parser, "paths")
     parser.add_argument("-e",  dest="extensions",default="",
                         help="Extensions to append, comma-separated (e.g. php,txt,bak)")
     parser.add_argument("-t",  dest="threads",   type=int, default=20)
@@ -216,10 +217,8 @@ def main():
     parser.add_argument("-o",  dest="output", help="Save JSON results to file")
     args = parser.parse_args()
 
-    wordlist = BUILTIN_WORDLIST
-    if args.wordlist:
-        with open(args.wordlist) as f:
-            wordlist = [l.strip() for l in f if l.strip() and not l.startswith("#")]
+    wordlist = (WL.resolve(args.wordlist, "paths") if args.wordlist
+                else WL.paths()) or BUILTIN_WORDLIST
 
     extensions = [e.strip() for e in args.extensions.split(",") if e.strip()]
 

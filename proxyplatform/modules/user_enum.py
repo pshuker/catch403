@@ -236,12 +236,12 @@ def scan(url: str, usernames: list[str] | None = None, *,
 # ── CLI ────────────────────────────────────────────────────────────────────
 
 def main():
+    from modules.wordlists import WL, add_wordlist_arg
     parser = argparse.ArgumentParser(description="Catch403 User Enumeration")
     parser.add_argument("-u", dest="url", required=True)
     parser.add_argument("--user-field", default="username")
     parser.add_argument("--pass-field", default="password")
-    parser.add_argument("-w", dest="wordlist", default="",
-                        help="Username wordlist (one per line)")
+    add_wordlist_arg(parser, "usernames", help_suffix="Accepts registry name or file path.")
     parser.add_argument("--default-creds", action="store_true",
                         help="Test default credential pairs only")
     parser.add_argument("--no-timing", action="store_true")
@@ -250,10 +250,8 @@ def main():
     parser.add_argument("-o", dest="output", default="")
     args = parser.parse_args()
 
-    usernames = BUILTIN_USERNAMES
-    if args.wordlist:
-        with open(args.wordlist) as fh:
-            usernames = [line.strip() for line in fh if line.strip()]
+    usernames = (WL.resolve(args.wordlist, "usernames") if args.wordlist
+                 else WL.usernames()) or BUILTIN_USERNAMES
 
     parsed = urllib.parse.urlparse(args.url)
     print(f"{run} User enumeration: {bold}{parsed.netloc}{parsed.path}{end}")
