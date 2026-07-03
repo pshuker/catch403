@@ -334,6 +334,67 @@ from modules.intercepting_proxy import CA_DIR, CA_CRT, CA_KEY, _cert_cache
 test("proxy CA paths defined",          lambda: assert_true(CA_DIR.endswith(".proxyplatform/ca")))
 test("proxy cert_cache is dict",        lambda: assert_true(isinstance(_cert_cache, dict)))
 
+# ── sqlmap_scanner ─────────────────────────────────────────────────────────
+
+from modules.sqlmap_scanner import _parse_log, _sqlmap_bin
+
+def _test_sqlmap_injectable():
+    log = "[INFO] GET parameter 'id' appears to be 'MySQL >= 5.0 AND error-based' injectable"
+    findings = _parse_log(log)
+    inj = [f for f in findings if f["severity"] == "critical"]
+    assert_true(len(inj) == 1)
+    assert_true("id" in inj[0]["name"])
+
+def _test_sqlmap_not_injectable():
+    log = "[CRITICAL] all tested parameters do not appear to be injectable"
+    findings = _parse_log(log)
+    assert_true(any(f["name"] == "Not injectable" for f in findings))
+
+def _test_sqlmap_dbms():
+    log = "[INFO] the back-end DBMS is PostgreSQL"
+    findings = _parse_log(log)
+    dbms = next((f for f in findings if f["name"] == "DBMS Fingerprint"), None)
+    assert_true(dbms is not None)
+    assert_true("PostgreSQL" in dbms["detail"])
+
+def _test_sqlmap_os():
+    log = "[INFO] the remote operating system is 'Windows Server 2019'"
+    findings = _parse_log(log)
+    osf = next((f for f in findings if f["name"] == "Remote OS"), None)
+    assert_true(osf is not None)
+    assert_true("Windows" in osf["detail"])
+
+def _test_sqlmap_payloads():
+    log = (
+        "[INFO] GET parameter 'q' appears to be 'boolean-based blind' injectable\n"
+        "Payload: 1 AND 1=1\n"
+        "Payload: 1 AND 1=2\n"
+    )
+    findings = _parse_log(log)
+    inj = next((f for f in findings if f["severity"] == "critical"), None)
+    assert_true(inj is not None)
+    assert_true(len(inj.get("payloads", [])) >= 2)
+
+def _test_sqlmap_bin():
+    path = _sqlmap_bin()
+    assert_true("sqlmap" in path)
+    assert_true(os.path.isfile(path))
+
+def _test_sqlmap_post_param():
+    log = "[INFO] POST parameter 'username' appears to be 'time-based blind' injectable"
+    findings = _parse_log(log)
+    inj = [f for f in findings if f["severity"] == "critical"]
+    assert_true(len(inj) == 1)
+    assert_true("username" in inj[0]["name"])
+
+test("sqlmap parse injectable param",    _test_sqlmap_injectable)
+test("sqlmap parse not injectable",      _test_sqlmap_not_injectable)
+test("sqlmap parse dbms fingerprint",    _test_sqlmap_dbms)
+test("sqlmap parse remote OS",           _test_sqlmap_os)
+test("sqlmap payloads attached",         _test_sqlmap_payloads)
+test("sqlmap bin found in venv",         _test_sqlmap_bin)
+test("sqlmap parse POST param",          _test_sqlmap_post_param)
+
 # ── summary ────────────────────────────────────────────────────────────────
 print(f"\n{passed} passed, {failed} failed\n")
 if failed:
