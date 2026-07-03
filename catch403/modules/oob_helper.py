@@ -49,7 +49,7 @@ TIMEOUT = 10
 INTERACTSH_SERVER = "https://oast.pro"  # ProjectDiscovery public instance
 # Alternatives: oast.live, oast.me, oast.online, oast.fun, oast.site
 
-_CONFIG_DIR  = os.path.expanduser("~/.proxyplatform")
+_CONFIG_DIR  = os.path.expanduser("~/.catch403")
 _SESSION_FILE = os.path.join(_CONFIG_DIR, "oob_session.json")
 
 

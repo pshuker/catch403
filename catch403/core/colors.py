@@ -1,4 +1,4 @@
-"""ANSI colour codes and status-line prefixes used across proxyplatform modules."""
+"""ANSI colour codes and status-line prefixes used across catch403 modules."""
 
 # Formatting
 bold      = "\033[1m"

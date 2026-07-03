@@ -1,4 +1,4 @@
-"""Tests for the new proxyplatform modules."""
+"""Tests for the new catch403 modules."""
 import sys, os, tempfile, json, base64, hashlib, hmac, re
 sys.path.insert(0, os.path.dirname(__file__))
 

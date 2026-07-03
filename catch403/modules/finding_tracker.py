@@ -5,7 +5,7 @@ Finding Tracker — central triage database for Catch403.
 Every scan module can push findings here. Triage them (confirm / reject /
 annotate), track remediation, and feed into report_generator.py.
 
-DB: ~/.proxyplatform/findings.db
+DB: ~/.catch403/findings.db
 
 Usage:
   ../.venv/bin/python3 modules/finding_tracker.py --list
@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 
 from core.colors import bold, end, good, bad, info, run
 
-DB_PATH = os.path.expanduser("~/.proxyplatform/findings.db")
+DB_PATH = os.path.expanduser("~/.catch403/findings.db")
 
 # Status values
 PENDING       = "pending"

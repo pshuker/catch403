@@ -22,7 +22,7 @@ from urllib.parse import urlparse
 
 from core.colors import bold, underline, end, green, red, yellow, good, bad, info, run, tab
 
-SCOPE_FILE = os.path.expanduser("~/.proxyplatform/scope.json")
+SCOPE_FILE = os.path.expanduser("~/.catch403/scope.json")
 
 
 class Scope:
@@ -119,7 +119,7 @@ def _print_rules(scope: Scope) -> None:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Manage in-scope targets for proxyplatform")
+    parser = argparse.ArgumentParser(description="Manage in-scope targets for catch403")
     sub = parser.add_subparsers(dest="cmd")
 
     add_p = sub.add_parser("add", help="Add a scope rule")

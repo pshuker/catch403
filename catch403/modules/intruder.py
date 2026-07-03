@@ -2,7 +2,7 @@
 """
 Burp Intruder-style fuzzer — Sniper, Battering-Ram, Pitchfork, Cluster-Bomb.
 
-Usage (from proxyplatform root, using the venv):
+Usage (from catch403 root, using the venv):
   ../.venv/bin/python3 -m modules.intruder <request_file> -p payloads.txt
 
 Run directly:

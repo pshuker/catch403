@@ -1,19 +1,19 @@
 #!/usr/bin/python3
 """
 Intercepting Proxy — HTTP/HTTPS MITM proxy server.
-The core of proxyplatform. Configure your browser to use localhost:8080.
+The core of catch403. Configure your browser to use localhost:8080.
 
 Features:
   - HTTP transparent forwarding + logging
   - HTTPS via CONNECT tunnel with dynamic per-domain SSL certs
   - On-the-fly CA cert generation (import ca.crt into your browser)
-  - Traffic logged to ~/.proxyplatform/traffic.db (Logger++)
+  - Traffic logged to ~/.catch403/traffic.db (Logger++)
   - Scope-aware: only logs in-scope URLs
   - Auto Repeater integration: matching rules auto-resend requests
   - Intercept queue: pause requests for manual inspection via web UI
 
 CA setup (one-time):
-  - Start the proxy → it generates ~/.proxyplatform/ca/ca.crt
+  - Start the proxy → it generates ~/.catch403/ca/ca.crt
   - Import ca.crt into your browser's certificate store
   - Set browser proxy: localhost:8080
 
@@ -52,7 +52,7 @@ from core.colors import bold, end, green, yellow, red, run, good, bad, info
 
 urllib3.disable_warnings()
 
-CA_DIR   = os.path.expanduser("~/.proxyplatform/ca")
+CA_DIR   = os.path.expanduser("~/.catch403/ca")
 CA_KEY   = os.path.join(CA_DIR, "ca.key")
 CA_CRT   = os.path.join(CA_DIR, "ca.crt")
 CERT_DIR = os.path.join(CA_DIR, "certs")
@@ -349,7 +349,7 @@ class ProxyServer:
         print(f"\n{bold}Catch403 Intercepting Proxy{end}")
         print(f"  {info} Listening  : {green}http://{self.host}:{self.port}{end}")
         print(f"  {info} CA cert    : {CA_CRT}")
-        print(f"  {info} Traffic log: ~/.proxyplatform/traffic.db")
+        print(f"  {info} Traffic log: ~/.catch403/traffic.db")
         if self.scope_host:
             print(f"  {info} Scope      : {self.scope_host}")
         print(f"\n  {bold}Configure your browser proxy: {self.host}:{self.port}{end}")

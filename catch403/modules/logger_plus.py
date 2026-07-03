@@ -35,7 +35,7 @@ from datetime import datetime
 
 from core.colors import bold, underline, end, red, yellow, green, run, good, bad, info, tab
 
-DB_PATH = os.path.expanduser("~/.proxyplatform/traffic.db")
+DB_PATH = os.path.expanduser("~/.catch403/traffic.db")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS traffic (

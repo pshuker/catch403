@@ -331,7 +331,7 @@ test("repeater rule serialise",         _test_rule_serial)
 test("repeater preset rules >= 4",      lambda: assert_true(len(PRESET_RULES) >= 4))
 
 from modules.intercepting_proxy import CA_DIR, CA_CRT, CA_KEY, _cert_cache
-test("proxy CA paths defined",          lambda: assert_true(CA_DIR.endswith(".proxyplatform/ca")))
+test("proxy CA paths defined",          lambda: assert_true(CA_DIR.endswith(".catch403/ca")))
 test("proxy cert_cache is dict",        lambda: assert_true(isinstance(_cert_cache, dict)))
 
 # ── sqlmap_scanner ─────────────────────────────────────────────────────────

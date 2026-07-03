@@ -9,7 +9,7 @@ Uses the Anthropic API (claude-sonnet-4-6) to:
   - Draft pentest report paragraphs from a finding
   - Answer free-form security questions
 
-API key: set ANTHROPIC_API_KEY env var, or store in ~/.proxyplatform/config.json
+API key: set ANTHROPIC_API_KEY env var, or store in ~/.catch403/config.json
 
 Usage:
   ../.venv/bin/python3 modules/ai_assist.py --analyse --request req.txt --response resp.txt
@@ -26,7 +26,7 @@ import sys
 
 from core.colors import bold, end, good, bad, info, run
 
-_CONFIG_PATH = os.path.expanduser("~/.proxyplatform/config.json")
+_CONFIG_PATH = os.path.expanduser("~/.catch403/config.json")
 MODEL        = "claude-sonnet-4-6"
 
 _SYSTEM = """You are an expert web application penetration tester and security researcher

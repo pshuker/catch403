@@ -38,7 +38,7 @@ from datetime import datetime, timezone
 
 from core.colors import bold, end, good, bad, info, run
 
-_CONFIG_DIR   = os.path.expanduser("~/.proxyplatform/cicd")
+_CONFIG_DIR   = os.path.expanduser("~/.catch403/cicd")
 _BASELINE_DIR = os.path.join(_CONFIG_DIR, "baselines")
 
 _SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
