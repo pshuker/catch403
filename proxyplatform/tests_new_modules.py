@@ -525,6 +525,181 @@ test("sqlmap payloads attached",         _test_sqlmap_payloads)
 test("sqlmap bin found in venv",         _test_sqlmap_bin)
 test("sqlmap parse POST param",          _test_sqlmap_post_param)
 
+# ── ssl_tls_scanner ────────────────────────────────────────────────────────
+
+from modules.ssl_tls_scanner import _cert_findings, WEAK_CIPHER_PATTERNS
+
+def _test_ssl_cert_expired():
+    cert = {
+        "notAfter": "Jan  1 00:00:00 2000 GMT",
+        "subject": [[("commonName", "test.com")]],
+        "issuer":  [[("commonName", "test.com")]],
+        "subjectAltName": [("DNS", "test.com")],
+    }
+    f = _cert_findings("test.com", cert, None)
+    assert_true(any("Expired" in x["name"] for x in f))
+
+def _test_ssl_self_signed():
+    cert = {
+        "notAfter": "Jan  1 00:00:00 2099 GMT",
+        "subject": [[("commonName", "test.com")]],
+        "issuer":  [[("commonName", "test.com")]],
+        "subjectAltName": [("DNS", "test.com")],
+    }
+    f = _cert_findings("test.com", cert, None)
+    assert_true(any("Self-Signed" in x["name"] for x in f))
+
+def _test_ssl_cn_mismatch():
+    cert = {
+        "notAfter": "Jan  1 00:00:00 2099 GMT",
+        "subject": [[("commonName", "other.com")]],
+        "issuer":  [[("commonName", "CA Inc")]],
+        "subjectAltName": [("DNS", "other.com")],
+    }
+    f = _cert_findings("target.com", cert, None)
+    assert_true(any("Mismatch" in x["name"] for x in f))
+
+def _test_ssl_weak_cipher_list():
+    assert_true("RC4" in WEAK_CIPHER_PATTERNS)
+    assert_true("NULL" in WEAK_CIPHER_PATTERNS)
+    assert_true(len(WEAK_CIPHER_PATTERNS) >= 8)
+
+test("ssl expired cert detected",        _test_ssl_cert_expired)
+test("ssl self-signed cert detected",    _test_ssl_self_signed)
+test("ssl CN mismatch detected",         _test_ssl_cn_mismatch)
+test("ssl weak cipher list populated",   _test_ssl_weak_cipher_list)
+
+# ── cors_scanner ───────────────────────────────────────────────────────────
+
+from modules.cors_scanner import SENSITIVE_RESP_HEADERS
+
+def _test_cors_sensitive_headers():
+    assert_true("authorization" in SENSITIVE_RESP_HEADERS)
+    assert_true(len(SENSITIVE_RESP_HEADERS) >= 4)
+
+def _test_cors_headers_lowercase():
+    assert_true(all(h == h.lower() for h in SENSITIVE_RESP_HEADERS))
+
+test("cors sensitive header list populated",   _test_cors_sensitive_headers)
+test("cors sensitive headers all lowercase",   _test_cors_headers_lowercase)
+
+# ── cookie_analyser ────────────────────────────────────────────────────────
+
+from modules.cookie_analyser import _analyse_cookie, _is_session_cookie
+
+def _test_cookie_session_names():
+    assert_true(_is_session_cookie("sessionid"))
+    assert_true(_is_session_cookie("PHPSESSID"))
+    assert_true(_is_session_cookie("auth_token"))
+    assert_true(not _is_session_cookie("color"))
+
+def _test_cookie_missing_httponly():
+    f = _analyse_cookie(None, "sessionid", "abc123", {})
+    assert_true(any("HttpOnly" in x["name"] for x in f))
+
+def _test_cookie_missing_secure():
+    f = _analyse_cookie(None, "sessionid", "abc123", {})
+    assert_true(any("Secure" in x["name"] for x in f))
+
+def _test_cookie_short_token():
+    f = _analyse_cookie(None, "sessionid", "short", {})
+    assert_true(any("Too Short" in x["name"] for x in f))
+
+def _test_cookie_all_flags_ok():
+    attrs = {"httponly": True, "secure": True, "samesite": "Lax"}
+    f = _analyse_cookie(None, "sessionid", "a" * 32, attrs)
+    # Should have no HttpOnly/Secure/SameSite/Short findings
+    problems = [x for x in f if x["severity"] in ("high", "critical")]
+    assert_eq(len(problems), 0)
+
+test("cookie session name detection",       _test_cookie_session_names)
+test("cookie missing HttpOnly flagged",     _test_cookie_missing_httponly)
+test("cookie missing Secure flagged",       _test_cookie_missing_secure)
+test("cookie short token flagged",          _test_cookie_short_token)
+test("cookie well-configured = no issues",  _test_cookie_all_flags_ok)
+
+# ── user_enum ──────────────────────────────────────────────────────────────
+
+from modules.user_enum import DEFAULT_CREDS, BUILTIN_USERNAMES, _response_differs
+
+class _FakeResp:
+    def __init__(self, status, text): self.status_code = status; self.text = text
+
+def _test_user_default_creds_has_admin():
+    assert_true(any(u == "admin" for u, _ in DEFAULT_CREDS))
+
+def _test_user_builtin_usernames():
+    assert_true("admin" in BUILTIN_USERNAMES)
+    assert_true(len(BUILTIN_USERNAMES) >= 10)
+
+def _test_user_response_differs_status():
+    assert_true(_response_differs(_FakeResp(200, "ok"), _FakeResp(401, "fail")))
+
+def _test_user_response_differs_body():
+    assert_true(_response_differs(_FakeResp(200, "x"*200), _FakeResp(200, "x"*10)))
+
+def _test_user_response_same():
+    assert_true(not _response_differs(_FakeResp(401, "Invalid"), _FakeResp(401, "Invalid")))
+
+test("user enum default creds has admin",    _test_user_default_creds_has_admin)
+test("user enum builtin username list",      _test_user_builtin_usernames)
+test("user enum response differs by status", _test_user_response_differs_status)
+test("user enum response differs by body",   _test_user_response_differs_body)
+test("user enum same response = no diff",    _test_user_response_same)
+
+# ── fingerprint ────────────────────────────────────────────────────────────
+
+from modules.fingerprint import _match_signatures, CMS_SIGNATURES, RECON_PATHS
+
+def _test_fp_match_wordpress():
+    hits = _match_signatures("/wp-content/themes/default/style.css", CMS_SIGNATURES)
+    assert_true("WordPress" in hits)
+
+def _test_fp_match_drupal():
+    hits = _match_signatures('/sites/default/files/image.jpg', CMS_SIGNATURES)
+    assert_true("Drupal" in hits)
+
+def _test_fp_recon_paths_has_git():
+    assert_true("/.git/HEAD" in RECON_PATHS)
+
+def _test_fp_recon_paths_has_env():
+    assert_true("/.env" in RECON_PATHS)
+
+def _test_fp_no_match():
+    hits = _match_signatures("nothing here", CMS_SIGNATURES)
+    assert_eq(hits, [])
+
+test("fingerprint WordPress detection",     _test_fp_match_wordpress)
+test("fingerprint Drupal detection",        _test_fp_match_drupal)
+test("fingerprint recon has .git/HEAD",     _test_fp_recon_paths_has_git)
+test("fingerprint recon has .env",          _test_fp_recon_paths_has_env)
+test("fingerprint no false positive",       _test_fp_no_match)
+
+# ── ldap_scanner ───────────────────────────────────────────────────────────
+
+from modules.ldap_scanner import AUTH_BYPASS, BLIND_TRUE, _ldap_error_in
+
+def _test_ldap_auth_bypass_payloads():
+    assert_true(len(AUTH_BYPASS) >= 8)
+    assert_true(any("*" in p for p in AUTH_BYPASS))
+
+def _test_ldap_error_detection():
+    assert_true(_ldap_error_in("Error: ldap_bind() failed"))
+    assert_true(_ldap_error_in("javax.naming.NamingException occurred"))
+    assert_true(not _ldap_error_in("Normal response text"))
+
+def _test_ldap_blind_payloads():
+    assert_true(len(BLIND_TRUE) >= 3)
+    assert_true("*" in BLIND_TRUE)
+
+def _test_ldap_bypass_has_wildcard():
+    assert_true(any("*" in p for p in AUTH_BYPASS))
+
+test("ldap auth bypass payload bank",       _test_ldap_auth_bypass_payloads)
+test("ldap error string detection",         _test_ldap_error_detection)
+test("ldap blind boolean payloads",         _test_ldap_blind_payloads)
+test("ldap bypass has wildcard payload",    _test_ldap_bypass_has_wildcard)
+
 # ── summary ────────────────────────────────────────────────────────────────
 print(f"\n{passed} passed, {failed} failed\n")
 if failed:
