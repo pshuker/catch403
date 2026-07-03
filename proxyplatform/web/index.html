@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catch403</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:         #0f1419;
+  --bg2:        #151b24;
+  --bg3:        #1a2230;
+  --bg4:        #1e2d3d;
+  --border:     #1e2733;
+  --border2:    #28323f;
+  --blue:       #4c8dff;
+  --blue2:      #3a7be0;
+  --blue-soft:  #2a3f5f;
+  --blue-glow:  rgba(76,141,255,.12);
+  --text:       #aab8c8;
+  --bright:     #e8eef5;
+  --muted:      #5a6b80;
+  --green:      #4ec9a5;
+  --red:        #e05252;
+  --yellow:     #e0a458;
+  --purple:     #9d7cff;
+  --mono:       'JetBrains Mono','Consolas','Courier New',monospace;
+  --sans:       'Inter',system-ui,-apple-system,sans-serif;
+}
+
+/* ── light theme ── */
+[data-theme="light"] {
+  --bg:         #f0f4f8;
+  --bg2:        #e2e8f0;
+  --bg3:        #d4dde8;
+  --bg4:        #c6d1de;
+  --border:     #b8c5d4;
+  --border2:    #9aabbe;
+  --blue:       #2563eb;
+  --blue2:      #1d4ed8;
+  --blue-soft:  #dbeafe;
+  --blue-glow:  rgba(37,99,235,.10);
+  --text:       #374151;
+  --bright:     #111827;
+  --muted:      #6b7280;
+  --green:      #059669;
+  --red:        #dc2626;
+  --yellow:     #d97706;
+  --purple:     #7c3aed;
+}
+[data-theme="light"] #topbar{background:#e2e8f0;border-bottom:1px solid var(--border2)}
+[data-theme="light"] .code-area,[data-theme="light"] .result-box{background:#fff;color:#1e293b}
+[data-theme="light"] textarea,[data-theme="light"] input[type=text],
+[data-theme="light"] input[type=number],[data-theme="light"] select{background:#fff;color:#1e293b}
+[data-theme="light"] .data-table td{color:var(--text)}
+[data-theme="light"] .data-table tr:hover td{color:var(--bright)}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── top bar ── */
+#topbar{background:#0a0e13;border-bottom:1px solid var(--border2);display:flex;align-items:center;padding:0 12px;height:42px;gap:8px;flex-shrink:0}
+#logo{color:var(--bright);font-weight:700;font-size:15px;letter-spacing:-.3px;margin-right:8px;white-space:nowrap;display:flex;align-items:center;gap:8px}
+#logo .logomark{width:24px;height:24px;border-radius:6px;background:linear-gradient(135deg,var(--blue),#3050a0);display:grid;place-items:center;color:#fff;font-size:12px;font-weight:700}
+#logo span{color:var(--muted);font-weight:400;font-size:12px}
+
+/* ── tab bar ── */
+#tabbar{background:var(--bg2);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;flex-shrink:0;scrollbar-width:none}
+#tabbar::-webkit-scrollbar{display:none}
+.tab{padding:9px 16px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,background .15s;font-size:12px;font-weight:500;letter-spacing:.01em}
+.tab:hover{color:var(--text);background:var(--bg3)}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue);background:var(--blue-glow)}
+
+/* ── panels ── */
+#panels{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.panel{display:none;flex:1;overflow:hidden;flex-direction:column}
+.panel.active{display:flex}
+
+/* ── split pane ── */
+.split{display:flex;flex:1;overflow:hidden;gap:0}
+.pane{display:flex;flex-direction:column;flex:1;overflow:hidden;min-width:0}
+.pane-header{background:var(--bg2);border-bottom:1px solid var(--border);padding:6px 12px;font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center;gap:8px;flex-shrink:0;font-family:var(--mono)}
+.pane-divider{width:1px;background:var(--border);cursor:col-resize;flex-shrink:0;transition:background .15s}
+.pane-divider:hover{background:var(--blue);width:2px}
+
+/* ── toolbar ── */
+.toolbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:6px 10px;display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
+
+/* ── inputs ── */
+textarea,input[type=text],input[type=number],select{
+  background:var(--bg3);border:1px solid var(--border);color:var(--bright);
+  border-radius:6px;padding:6px 10px;font-family:var(--mono);font-size:12px;
+  outline:none;resize:none;transition:border-color .15s;
+}
+textarea:focus,input[type=text]:focus,input[type=number]:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-glow)}
+select{cursor:pointer;padding:5px 10px}
+.code-area{flex:1;overflow:auto;background:var(--bg);border:none;width:100%;padding:10px;font-family:var(--mono);font-size:12px;color:var(--text);line-height:1.6;white-space:pre-wrap;word-break:break-all}
+.code-area:focus{outline:none;box-shadow:inset 0 0 0 1px var(--blue)}
+
+/* ── buttons ── */
+.btn{background:var(--blue);color:#fff;border:none;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:background .15s,box-shadow .15s;white-space:nowrap;letter-spacing:.01em}
+.btn:hover{background:var(--blue2);box-shadow:0 0 14px var(--blue-glow)}
+.btn.secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
+.btn.secondary:hover{border-color:var(--blue);color:var(--blue)}
+.btn.danger{background:rgba(224,82,82,.2);color:#f88;border:1px solid rgba(224,82,82,.3)}
+.btn.danger:hover{background:rgba(224,82,82,.35)}
+.btn.sm{padding:3px 10px;font-size:11px;border-radius:4px}
+
+/* ── tables ── */
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{background:var(--bg2);color:var(--muted);font-weight:600;text-transform:uppercase;font-size:10px;letter-spacing:.08em;padding:7px 12px;text-align:left;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:1;font-family:var(--mono)}
+.data-table td{padding:6px 12px;border-bottom:1px solid var(--border);vertical-align:top;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.data-table tr:hover td{background:var(--bg3);cursor:pointer;color:var(--bright)}
+.data-table .mono{font-family:var(--mono)}
+.table-wrap{overflow:auto;flex:1}
+
+/* ── badges ── */
+.badge{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;line-height:1.4;letter-spacing:.03em}
+.badge.high{background:rgba(224,82,82,.18);color:#f88;border:1px solid rgba(224,82,82,.3)}
+.badge.medium{background:rgba(224,164,88,.15);color:#e0a458;border:1px solid rgba(224,164,88,.3)}
+.badge.low{background:rgba(78,201,165,.12);color:#4ec9a5;border:1px solid rgba(78,201,165,.25)}
+.badge.info{background:var(--blue-glow);color:#4c8dff;border:1px solid rgba(76,141,255,.25)}
+.badge.green{background:rgba(78,201,165,.12);color:#4ec9a5;border:1px solid rgba(78,201,165,.25)}
+.badge.blue{background:var(--blue-glow);color:#4c8dff;border:1px solid rgba(76,141,255,.25)}
+
+/* ── status pills ── */
+.s200{color:#4ec9a5}.s300{color:#4c8dff}.s400{color:#e0a458}.s500{color:#e05252}
+.method-get{color:#4ec9a5}.method-post{color:#4c8dff}.method-put{color:#9d7cff}.method-delete{color:#e05252}
+
+/* ── dashboard ── */
+#dash-cards{display:flex;gap:12px;flex-wrap:wrap;padding:16px}
+.dash-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px 20px;min-width:160px;flex:1;transition:border-color .15s}
+.dash-card:hover{border-color:var(--border2)}
+.dash-card h3{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.dash-card .num{font-size:28px;font-weight:700;color:var(--bright)}
+.dash-card .num-accent{color:var(--blue)}
+.dash-card .sub{font-size:11px;color:var(--muted);margin-top:4px}
+#dash-tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;padding:0 16px 16px}
+.tool-card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;cursor:pointer;transition:border-color .15s,background .15s}
+.tool-card:hover{border-color:var(--blue);background:var(--blue-glow)}
+.tool-card h4{color:var(--blue);margin-bottom:4px;font-size:13px;font-weight:600}
+.tool-card p{color:var(--muted);font-size:11px;line-height:1.5}
+
+/* ── results / output ── */
+.result-box{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px;font-family:var(--mono);font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-all;overflow:auto;color:var(--text)}
+.diff-add{color:#4ec9a5}.diff-rem{color:#e05252}.diff-hdr{color:var(--muted)}
+
+/* ── form rows ── */
+.form-row{display:flex;align-items:center;gap:8px;padding:6px 10px}
+.form-row label{color:var(--muted);min-width:110px;font-size:12px}
+.form-row input[type=text],.form-row input[type=number],.form-row select{flex:1}
+
+/* ── verdict ── */
+.verdict-STRONG{color:#4ec9a5;font-weight:700}
+.verdict-MODERATE{color:#e0a458;font-weight:700}
+.verdict-WEAK{color:#e05252;font-weight:700}
+
+/* ── scrollbars ── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+
+/* ── misc ── */
+.empty{color:var(--muted);text-align:center;padding:40px;font-size:12px}
+.err{color:var(--red)}
+.ok{color:var(--green)}
+.warn{color:var(--yellow)}
+hr.sep{border:none;border-top:1px solid var(--border);margin:0}
+.tag{background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:2px 7px;font-size:11px;color:var(--muted);font-family:var(--mono)}
+.section{padding:12px 16px}
+.section h3{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;font-family:var(--mono)}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div id="logo">
+    <div class="logomark">P</div>
+    Catch403<span>· authorised targets only</span>
+  </div>
+  <div style="flex:1"></div>
+  <button class="btn secondary btn-sm" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark theme" style="padding:4px 10px;font-size:11px;border-radius:20px;display:flex;align-items:center;gap:5px">
+    <span id="theme-icon">☀</span> <span id="theme-label">Light</span>
+  </button>
+</div>
+
+<!-- TAB BAR -->
+<div id="tabbar">
+  <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
+  <div class="tab" onclick="switchTab('proxy')">Proxy</div>
+  <div class="tab" onclick="switchTab('intruder')">Intruder</div>
+  <div class="tab" onclick="switchTab('repeater')">Repeater</div>
+  <div class="tab" onclick="switchTab('sequencer')">Sequencer</div>
+  <div class="tab" onclick="switchTab('decoder')">Decoder</div>
+  <div class="tab" onclick="switchTab('comparer')">Comparer</div>
+  <div class="tab" onclick="switchTab('jwt')">JWT</div>
+  <div class="tab" onclick="switchTab('spider')">Spider</div>
+  <div class="tab" onclick="switchTab('params')">Param Miner</div>
+  <div class="tab" onclick="switchTab('csrf')">CSRF PoC</div>
+</div>
+
+<!-- PANELS -->
+<div id="panels">
+
+<!-- DASHBOARD -->
+<div class="panel active" id="panel-dashboard">
+  <div id="dash-cards">
+    <div class="dash-card"><h3>Requests</h3><div class="num" id="stat-reqs">0</div><div class="sub">in history</div></div>
+    <div class="dash-card"><h3>Findings</h3><div class="num" id="stat-findings">0</div><div class="sub">across all scans</div></div>
+    <div class="dash-card"><h3>Modules</h3><div class="num">8</div><div class="sub">loaded</div></div>
+    <div class="dash-card"><h3>Status</h3><div class="num" style="color:var(--green)">●</div><div class="sub">server running</div></div>
+  </div>
+  <div id="dash-tools">
+    <div class="tool-card" onclick="switchTab('intruder')"><h4>Intruder</h4><p>Sniper · Battering-Ram · Pitchfork · Cluster-Bomb fuzzing</p></div>
+    <div class="tool-card" onclick="switchTab('sequencer')"><h4>Sequencer</h4><p>Analyse session token entropy and randomness quality</p></div>
+    <div class="tool-card" onclick="switchTab('decoder')"><h4>Decoder</h4><p>URL · Base64 · HTML · Hex encode / decode</p></div>
+    <div class="tool-card" onclick="switchTab('comparer')"><h4>Comparer</h4><p>Unified diff of two requests or responses</p></div>
+    <div class="tool-card" onclick="switchTab('jwt')"><h4>JWT Analyser</h4><p>Decode · alg:none · tamper · HMAC crack</p></div>
+    <div class="tool-card" onclick="switchTab('spider')"><h4>Spider</h4><p>Crawl and map a target site</p></div>
+    <div class="tool-card" onclick="switchTab('params')"><h4>Param Miner</h4><p>Discover hidden / undocumented parameters</p></div>
+    <div class="tool-card" onclick="switchTab('csrf')"><h4>CSRF PoC</h4><p>Generate auto-submit HTML from a Burp request</p></div>
+  </div>
+</div>
+
+<!-- PROXY -->
+<div class="panel" id="panel-proxy">
+  <div class="toolbar">
+    <button class="btn sm secondary" onclick="clearHistory()">Clear</button>
+    <input type="text" id="proxy-filter" placeholder="Filter by host, method, status…" style="width:220px" oninput="renderHistory()">
+    <span style="color:var(--muted);font-size:11px;margin-left:auto" id="proxy-count">0 requests</span>
+  </div>
+  <div class="split">
+    <div class="pane" style="flex:1.2;min-width:0">
+      <div class="pane-header">HTTP History</div>
+      <div class="table-wrap">
+        <table class="data-table" id="history-table">
+          <thead><tr><th>#</th><th>Method</th><th>Host</th><th>Path</th><th>Status</th><th>Length</th></tr></thead>
+          <tbody id="history-body"></tbody>
+        </table>
+        <div class="empty" id="history-empty">No requests captured yet.<br>Configure your browser to use this as an HTTP proxy.</div>
+      </div>
+    </div>
+    <div class="pane-divider"></div>
+    <div class="pane" style="flex:0.8;min-width:0">
+      <div class="split" style="flex-direction:column">
+        <div class="pane" style="flex:1">
+          <div class="pane-header">Request</div>
+          <textarea class="code-area" id="proxy-req" readonly placeholder="Select a request…"></textarea>
+        </div>
+        <div style="height:4px;background:var(--border);cursor:row-resize;flex-shrink:0"></div>
+        <div class="pane" style="flex:1">
+          <div class="pane-header">Response</div>
+          <textarea class="code-area" id="proxy-res" readonly placeholder="Response will appear here…"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- INTRUDER -->
+<div class="panel" id="panel-intruder">
+  <div class="toolbar">
+    <select id="intruder-attack">
+      <option value="sniper">Sniper</option>
+      <option value="battering-ram">Battering Ram</option>
+      <option value="pitchfork">Pitchfork</option>
+      <option value="clusterbomb">Cluster Bomb</option>
+    </select>
+    <button class="btn" onclick="runIntruder()">▶ Start attack</button>
+    <span style="color:var(--muted);font-size:11px" id="intruder-status"></span>
+  </div>
+  <div class="split">
+    <div class="pane">
+      <div class="pane-header">Request (mark positions with §payload§)</div>
+      <textarea class="code-area" id="intruder-req" placeholder="POST /login HTTP/1.1&#10;Host: target.com&#10;Content-Type: application/x-www-form-urlencoded&#10;&#10;username=§admin§&password=§test§"></textarea>
+    </div>
+    <div class="pane-divider"></div>
+    <div class="pane" style="flex:0.7">
+      <div class="pane-header">Payload sets</div>
+      <div style="padding:8px;display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="color:var(--muted);font-size:11px;min-width:60px">Set 1</span>
+          <input type="text" id="intruder-p1-label" placeholder="passwords.txt" style="flex:1">
+        </div>
+        <textarea id="intruder-p1" style="height:120px;flex:none;resize:vertical" placeholder="admin&#10;password&#10;123456&#10;letmein"></textarea>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="color:var(--muted);font-size:11px;min-width:60px">Set 2</span>
+          <input type="text" id="intruder-p2-label" placeholder="usernames.txt (Pitchfork/Clusterbomb)" style="flex:1">
+        </div>
+        <textarea id="intruder-p2" style="height:80px;flex:none;resize:vertical" placeholder="admin&#10;user&#10;root"></textarea>
+      </div>
+      <div class="pane-header" style="margin-top:auto">Results</div>
+      <div class="table-wrap" id="intruder-results">
+        <div class="empty">Run an attack to see results here.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REPEATER -->
+<div class="panel" id="panel-repeater">
+  <div class="toolbar">
+    <input type="text" id="rep-url" placeholder="https://target.com" style="flex:1">
+    <button class="btn" onclick="runRepeater()">Send ▶</button>
+    <select id="rep-method">
+      <option>GET</option><option selected>POST</option><option>PUT</option><option>DELETE</option><option>PATCH</option>
+    </select>
+  </div>
+  <div class="split">
+    <div class="pane">
+      <div class="pane-header">
+        Request
+        <span class="tag" style="margin-left:auto">Headers + body</span>
+      </div>
+      <textarea class="code-area" id="rep-req" placeholder="Content-Type: application/json&#10;Authorization: Bearer eyJ...&#10;&#10;{&quot;key&quot;: &quot;value&quot;}"></textarea>
+    </div>
+    <div class="pane-divider"></div>
+    <div class="pane">
+      <div class="pane-header">Response <span id="rep-status" style="margin-left:8px"></span></div>
+      <textarea class="code-area" id="rep-res" readonly placeholder="Response will appear here…"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- SEQUENCER -->
+<div class="panel" id="panel-sequencer">
+  <div class="toolbar">
+    <button class="btn" onclick="runSequencer()">Analyse</button>
+    <span style="color:var(--muted);font-size:11px">Paste tokens one per line</span>
+  </div>
+  <div class="split">
+    <div class="pane" style="max-width:360px">
+      <div class="pane-header">Tokens (one per line)</div>
+      <textarea class="code-area" id="seq-tokens" placeholder="abc123xyz&#10;def456uvw&#10;ghi789rst&#10;..."></textarea>
+    </div>
+    <div class="pane-divider"></div>
+    <div class="pane">
+      <div class="pane-header">Analysis</div>
+      <div style="padding:16px;overflow:auto;flex:1" id="seq-results">
+        <div class="empty">Paste tokens and click Analyse.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DECODER -->
+<div class="panel" id="panel-decoder">
+  <div class="toolbar">
+    <select id="dec-mode">
+      <option value="url-decode">URL Decode</option>
+      <option value="url-encode">URL Encode</option>
+      <option value="b64-decode">Base64 Decode</option>
+      <option value="b64-encode">Base64 Encode</option>
+      <option value="html-decode">HTML Decode</option>
+      <option value="html-encode">HTML Encode</option>
+      <option value="hex-decode">Hex Decode</option>
+      <option value="hex-encode">Hex Encode</option>
+    </select>
+    <button class="btn" onclick="runDecoder()">Decode / Encode</button>
+    <button class="btn secondary" onclick="swapDecoder()">⇅ Swap</button>
+  </div>
+  <div class="split">
+    <div class="pane">
+      <div class="pane-header">Input</div>
+      <textarea class="code-area" id="dec-in" placeholder="Paste text to encode or decode…"></textarea>
+    </div>
+    <div class="pane-divider"></div>
+    <div class="pane">
+      <div class="pane-header">Output</div>
+      <textarea class="code-area" id="dec-out" readonly></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- COMPARER -->
+<div class="panel" id="panel-comparer">
+  <div class="toolbar">
+    <button class="btn" onclick="runComparer()">Compare</button>
+    <button class="btn secondary" onclick="clearComparer()">Clear</button>
+    <span id="comp-sim" style="color:var(--muted);font-size:11px;margin-left:8px"></span>
+  </div>
+  <div class="split">
+    <div class="pane">
+      <div class="pane-header">Item A</div>
+      <textarea class="code-area" id="comp-a" placeholder="Paste request or response A…"></textarea>
+    </div>
+    <div class="pane-divider"></div>
+    <div class="pane">
+      <div class="pane-header">Item B</div>
+      <textarea class="code-area" id="comp-b" placeholder="Paste request or response B…"></textarea>
+    </div>
+  </div>
+  <hr class="sep">
+  <div class="pane" style="flex:none;height:220px">
+    <div class="pane-header">Diff</div>
+    <div class="code-area" id="comp-diff" style="height:100%"></div>
+  </div>
+</div>
+
+<!-- JWT -->
+<div class="panel" id="panel-jwt">
+  <div class="toolbar">
+    <button class="btn" onclick="runJwt('decode')">Decode</button>
+    <button class="btn secondary" onclick="runJwt('algnone')">alg:none</button>
+    <button class="btn secondary" onclick="runJwt('tamper')">Tamper</button>
+    <button class="btn secondary" onclick="runJwt('crack')">Crack</button>
+  </div>
+  <div class="split">
+    <div class="pane" style="max-width:400px">
+      <div class="pane-header">Token</div>
+      <textarea class="code-area" id="jwt-token" style="flex:none;height:90px" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0In0.sig"></textarea>
+      <div class="pane-header">Tamper — edit claims (JSON)</div>
+      <textarea class="code-area" id="jwt-claims" style="flex:none;height:100px" placeholder='{"role": "admin", "sub": "999"}'></textarea>
+      <div class="pane-header">Crack — wordlist (one secret per line)</div>
+      <textarea class="code-area" id="jwt-wl" style="flex:1" placeholder="secret&#10;password&#10;mysecret&#10;..."></textarea>
+    </div>
+    <div class="pane-divider"></div>
+    <div class="pane">
+      <div class="pane-header">Results</div>
+      <div style="padding:12px;overflow:auto;flex:1" id="jwt-results">
+        <div class="empty">Paste a token and choose an action.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SPIDER -->
+<div class="panel" id="panel-spider">
+  <div class="toolbar">
+    <input type="text" id="spider-url" placeholder="https://target.com" style="flex:1">
+    <label style="color:var(--muted);font-size:11px">Depth</label>
+    <input type="number" id="spider-depth" value="2" min="1" max="5" style="width:50px">
+    <button class="btn" onclick="runSpider()">▶ Crawl</button>
+    <span id="spider-status" style="color:var(--muted);font-size:11px"></span>
+  </div>
+  <div class="split">
+    <div class="pane">
+      <div class="pane-header">Internal pages <span id="spider-int-count" class="tag" style="margin-left:6px">0</span></div>
+      <div class="table-wrap">
+        <table class="data-table"><thead><tr><th>URL</th></tr></thead>
+        <tbody id="spider-int"></tbody></table>
+        <div class="empty" id="spider-int-empty">Run a crawl to see results.</div>
+      </div>
+    </div>
+    <div class="pane-divider"></div>
+    <div class="pane" style="flex:0.6">
+      <div class="pane-header">External <span id="spider-ext-count" class="tag" style="margin-left:6px">0</span></div>
+      <div class="table-wrap"><table class="data-table"><thead><tr><th>URL</th></tr></thead>
+        <tbody id="spider-ext"></tbody></table></div>
+      <hr class="sep">
+      <div class="pane-header">Files <span id="spider-files-count" class="tag" style="margin-left:6px">0</span></div>
+      <div class="table-wrap"><table class="data-table"><thead><tr><th>URL</th></tr></thead>
+        <tbody id="spider-files"></tbody></table></div>
+      <hr class="sep">
+      <div class="pane-header">Errors <span id="spider-err-count" class="tag" style="margin-left:6px">0</span></div>
+      <div class="table-wrap"><table class="data-table"><thead><tr><th>URL</th><th>Error</th></tr></thead>
+        <tbody id="spider-errs"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- PARAM MINER -->
+<div class="panel" id="panel-params">
+  <div class="toolbar">
+    <input type="text" id="pm-url" placeholder="https://target.com/page" style="flex:1">
+    <button class="btn" onclick="runParams()">▶ Mine</button>
+    <span id="pm-status" style="color:var(--muted);font-size:11px"></span>
+  </div>
+  <div class="split">
+    <div class="pane" style="max-width:340px">
+      <div class="pane-header">Custom wordlist (optional — leave blank for built-in 2,589 params)</div>
+      <textarea class="code-area" id="pm-wl" placeholder="id&#10;user_id&#10;debug&#10;test&#10;admin&#10;..."></textarea>
+    </div>
+    <div class="pane-divider"></div>
+    <div class="pane">
+      <div class="pane-header">Found parameters <span id="pm-count" class="tag" style="margin-left:6px">0</span></div>
+      <div class="table-wrap">
+        <table class="data-table"><thead><tr><th>Parameter</th><th>Note</th></tr></thead>
+        <tbody id="pm-results"></tbody></table>
+        <div class="empty" id="pm-empty">Enter a URL and click Mine.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CSRF PoC -->
+<div class="panel" id="panel-csrf">
+  <div class="toolbar">
+    <button class="btn" onclick="runCsrf()">Generate PoC</button>
+    <button class="btn secondary" onclick="copyCsrf()">Copy HTML</button>
+    <span id="csrf-url-label" style="color:var(--muted);font-size:11px;margin-left:8px"></span>
+  </div>
+  <div class="split">
+    <div class="pane">
+      <div class="pane-header">Burp Request (paste raw)</div>
+      <textarea class="code-area" id="csrf-req" placeholder="POST /change-email HTTP/1.1&#10;Host: target.com&#10;Origin: https://target.com&#10;Content-Type: application/x-www-form-urlencoded&#10;&#10;email=attacker%40evil.com&confirm=attacker%40evil.com"></textarea>
+    </div>
+    <div class="pane-divider"></div>
+    <div class="pane">
+      <div class="pane-header">Generated PoC HTML</div>
+      <textarea class="code-area" id="csrf-out" readonly placeholder="PoC will appear here…"></textarea>
+    </div>
+  </div>
+</div>
+
+</div><!-- /panels -->
+
+<script>
+// ── theme ─────────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const html  = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('theme-icon').textContent  = isDark ? '☾' : '☀';
+  document.getElementById('theme-label').textContent = isDark ? 'Dark' : 'Light';
+  localStorage.setItem('pp-theme', isDark ? 'light' : 'dark');
+}
+(function(){
+  const saved = localStorage.getItem('pp-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  const isDark = saved === 'dark';
+  const icon = document.getElementById('theme-icon');
+  const label = document.getElementById('theme-label');
+  if(icon) { icon.textContent = isDark ? '☀' : '☾'; }
+  if(label){ label.textContent = isDark ? 'Light' : 'Dark'; }
+})();
+
+// ── state ─────────────────────────────────────────────────────────────────
+const history_store = [];
+const findings      = [];
+
+// ── api ───────────────────────────────────────────────────────────────────
+async function api(path, body) {
+  try {
+    const r = await fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    return await r.json();
+  } catch(e) { return {error: e.message}; }
+}
+
+// ── tabs ──────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const tabs = ['dashboard','proxy','intruder','repeater','sequencer','decoder','comparer','jwt','spider','params','csrf'];
+    t.classList.toggle('active', tabs[i]===name);
+  });
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active', p.id==='panel-'+name));
+}
+
+// ── decoder ───────────────────────────────────────────────────────────────
+async function runDecoder() {
+  const input = document.getElementById('dec-in').value;
+  const mode  = document.getElementById('dec-mode').value;
+  const r = await api('/api/decoder', {input, mode});
+  document.getElementById('dec-out').value = r.error || r.output || '';
+}
+function swapDecoder() {
+  const a=document.getElementById('dec-in'), b=document.getElementById('dec-out');
+  const tmp=a.value; a.value=b.value; b.value=tmp;
+}
+
+// ── comparer ──────────────────────────────────────────────────────────────
+async function runComparer() {
+  const a=document.getElementById('comp-a').value, b=document.getElementById('comp-b').value;
+  const r=await api('/api/compare',{a,b});
+  if(r.error){document.getElementById('comp-diff').textContent=r.error;return;}
+  document.getElementById('comp-sim').textContent=`Similarity: ${r.similarity}%`;
+  const el=document.getElementById('comp-diff');
+  if(!r.diff){el.innerHTML='<span class="ok">Files are identical.</span>';return;}
+  el.innerHTML=r.diff.split('\n').map(l=>{
+    if(l.startsWith('+++') || l.startsWith('---'))return`<span style="color:var(--muted)">${esc(l)}</span>`;
+    if(l.startsWith('@@'))return`<span class="diff-hdr">${esc(l)}</span>`;
+    if(l.startsWith('+'))return`<span class="diff-add">${esc(l)}</span>`;
+    if(l.startsWith('-'))return`<span class="diff-rem">${esc(l)}</span>`;
+    return`<span>${esc(l)}</span>`;
+  }).join('\n');
+}
+function clearComparer(){['comp-a','comp-b','comp-diff'].forEach(id=>{const e=document.getElementById(id);e.value!==undefined?e.value='':e.textContent=''});document.getElementById('comp-sim').textContent='';}
+
+// ── jwt ───────────────────────────────────────────────────────────────────
+async function runJwt(action) {
+  const token=document.getElementById('jwt-token').value.trim();
+  if(!token){alert('Paste a JWT token first.');return;}
+  const el=document.getElementById('jwt-results');
+  let r;
+  if(action==='decode'){
+    r=await api('/api/jwt/decode',{token});
+    if(r.error){el.innerHTML=`<span class="err">${esc(r.error)}</span>`;return;}
+    let html=`<div style="margin-bottom:12px"><div class="pane-header" style="margin-bottom:6px">Header</div><pre class="result-box">${esc(JSON.stringify(r.header,null,2))}</pre></div>`;
+    html+=`<div style="margin-bottom:12px"><div class="pane-header" style="margin-bottom:6px">Payload</div><pre class="result-box">${esc(JSON.stringify(r.payload,null,2))}</pre></div>`;
+    html+=`<div style="margin-bottom:12px"><div class="pane-header" style="margin-bottom:6px">Signature</div><pre class="result-box" style="word-break:break-all">${esc(r.signature||'(empty)')}</pre></div>`;
+    if(r.warnings?.length) html+=r.warnings.map(w=>`<div class="${w.startsWith('⚠')?'err':'warn'}" style="margin-bottom:4px">${esc(w)}</div>`).join('');
+    el.innerHTML=html;
+  } else if(action==='algnone'){
+    r=await api('/api/jwt/algnone',{token});
+    if(r.error){el.innerHTML=`<span class="err">${esc(r.error)}</span>`;return;}
+    el.innerHTML=`<div class="pane-header" style="margin-bottom:8px">Forged token (alg:none)</div><pre class="result-box" style="word-break:break-all">${esc(r.forged)}</pre><div class="warn" style="margin-top:8px">Send this token and check if the server accepts it without verifying the signature.</div>`;
+  } else if(action==='tamper'){
+    let claims={};
+    try{claims=JSON.parse(document.getElementById('jwt-claims').value||'{}');}catch(e){alert('Invalid JSON in claims field');return;}
+    r=await api('/api/jwt/tamper',{token,claims});
+    if(r.error){el.innerHTML=`<span class="err">${esc(r.error)}</span>`;return;}
+    el.innerHTML=`<div class="pane-header" style="margin-bottom:8px">Tampered token (unsigned)</div><pre class="result-box" style="word-break:break-all">${esc(r.forged)}</pre>`;
+  } else if(action==='crack'){
+    const wordlist=document.getElementById('jwt-wl').value;
+    if(!wordlist){alert('Paste a wordlist first.');return;}
+    el.innerHTML='<div class="muted">Cracking… (this may take a while)</div>';
+    r=await api('/api/jwt/crack',{token,wordlist});
+    if(r.error){el.innerHTML=`<span class="err">${esc(r.error)}</span>`;return;}
+    el.innerHTML=r.found
+      ?`<div class="ok" style="font-size:16px;margin-bottom:8px">✓ Secret found!</div><pre class="result-box">${esc(r.found)}</pre>`
+      :`<div class="err">Secret not found in wordlist.</div>`;
+  }
+}
+
+// ── sequencer ─────────────────────────────────────────────────────────────
+async function runSequencer() {
+  const tokens=document.getElementById('seq-tokens').value;
+  const r=await api('/api/sequencer',{tokens});
+  const el=document.getElementById('seq-results');
+  if(r.error){el.innerHTML=`<span class="err">${esc(r.error)}</span>`;return;}
+  const vc=`verdict-${r.verdict}`;
+  el.innerHTML=`
+<div style="margin-bottom:16px">
+  <div class="pane-header" style="margin-bottom:8px">Summary</div>
+  <table style="width:100%;border-collapse:collapse">
+    ${row('Tokens analysed',       r.count)}
+    ${row('Avg char entropy',      r.avg_entropy + ' bits/char')}
+    ${row('Bit-level entropy',     r.bit_entropy + ' (ideal=1.0)')}
+    ${row('Compression ratio',     r.compression_ratio + ' (ideal≈1.0)')}
+    ${row('Monobit test',          r.monobit_pass ? '<span class="ok">PASS</span>' : '<span class="err">FAIL</span>')}
+    ${row('Uniqueness',            r.unique_ratio + '%')}
+    ${row('Token length (min/max/avg)', `${r.min_length} / ${r.max_length} / ${r.avg_length}`)}
+    ${row('Score',                 `${r.score}/5 checks passed`)}
+  </table>
+</div>
+<div>
+  <div class="pane-header" style="margin-bottom:8px">Verdict</div>
+  <div class="${vc}" style="font-size:22px">${r.verdict}</div>
+  ${r.verdict==='WEAK'?'<div class="err" style="margin-top:8px">⚠ Tokens may be predictable — session hijacking risk.</div>':''}
+  ${r.verdict==='MODERATE'?'<div class="warn" style="margin-top:8px">Some entropy checks failed — investigate further.</div>':''}
+  ${r.verdict==='STRONG'?'<div class="ok" style="margin-top:8px">Tokens appear sufficiently random.</div>':''}
+</div>`;
+}
+function row(label,val){return`<tr><td style="color:var(--muted);padding:4px 0;width:220px;font-size:12px">${label}</td><td style="padding:4px 0;font-family:var(--mono);font-size:12px">${val}</td></tr>`;}
+
+// ── csrf ──────────────────────────────────────────────────────────────────
+async function runCsrf() {
+  const request=document.getElementById('csrf-req').value;
+  const r=await api('/api/csrf',{request});
+  if(r.error){document.getElementById('csrf-out').value='Error: '+r.error;return;}
+  document.getElementById('csrf-out').value=r.poc;
+  document.getElementById('csrf-url-label').textContent='→ '+r.url;
+}
+async function copyCsrf() {
+  const v=document.getElementById('csrf-out').value;
+  if(v) await navigator.clipboard.writeText(v);
+}
+
+// ── spider ────────────────────────────────────────────────────────────────
+async function runSpider() {
+  const url=document.getElementById('spider-url').value.trim();
+  const depth=parseInt(document.getElementById('spider-depth').value)||2;
+  if(!url){alert('Enter a URL.');return;}
+  const st=document.getElementById('spider-status');
+  st.textContent='Crawling… (may take a while)';
+  const r=await api('/api/spider',{url,depth});
+  st.textContent='Done.';
+  if(r.error){st.textContent='Error: '+r.error;return;}
+  const tb=(id,rows)=>{
+    document.getElementById(id).innerHTML=rows.map(url=>`<tr><td class="mono">${esc(url)}</td></tr>`).join('');
+  };
+  tb('spider-int',r.visited); document.getElementById('spider-int-count').textContent=r.visited.length;
+  tb('spider-ext',r.external); document.getElementById('spider-ext-count').textContent=r.external.length;
+  tb('spider-files',r.files); document.getElementById('spider-files-count').textContent=r.files.length;
+  document.getElementById('spider-errs').innerHTML=Object.entries(r.errors||{}).map(([u,e])=>`<tr><td class="mono">${esc(u)}</td><td class="err">${esc(e)}</td></tr>`).join('');
+  document.getElementById('spider-err-count').textContent=Object.keys(r.errors||{}).length;
+  document.getElementById('spider-int-empty').style.display=r.visited.length?'none':'block';
+}
+
+// ── param miner ───────────────────────────────────────────────────────────
+async function runParams() {
+  const url=document.getElementById('pm-url').value.trim();
+  const wordlist=document.getElementById('pm-wl').value;
+  if(!url){alert('Enter a URL.');return;}
+  const st=document.getElementById('pm-status');
+  st.textContent='Mining… (testing params)';
+  const r=await api('/api/params',{url,wordlist});
+  st.textContent=r.error?'Error: '+r.error:`Tested ${r.tested||0} params.`;
+  if(r.error) return;
+  const tb=document.getElementById('pm-results');
+  document.getElementById('pm-count').textContent=r.found.length;
+  document.getElementById('pm-empty').style.display=r.found.length?'none':'block';
+  tb.innerHTML=r.found.map(p=>`<tr><td class="mono ok">${esc(p)}</td><td style="color:var(--muted)">Response length changed</td></tr>`).join('');
+}
+
+// ── repeater ──────────────────────────────────────────────────────────────
+async function runRepeater() {
+  const url=document.getElementById('rep-url').value.trim();
+  const method=document.getElementById('rep-method').value;
+  const reqText=document.getElementById('rep-req').value;
+  if(!url){alert('Enter a URL.');return;}
+  const headers={};
+  const lines=reqText.split('\n');
+  let body='', inBody=false;
+  for(const line of lines){
+    if(!inBody&&line.trim()===''){inBody=true;continue;}
+    if(!inBody&&line.includes(':')){const[k,...v]=line.split(':');headers[k.trim()]=v.join(':').trim();}
+    else if(inBody) body+=line+'\n';
+  }
+  try{
+    const opts={method,headers};
+    if(body.trim()&&!['GET','HEAD'].includes(method)) opts.body=body.trim();
+    const res=await fetch(url,opts);
+    const resText=await res.text();
+    let out=`HTTP/${res.status} ${res.statusText}\n`;
+    res.headers.forEach((v,k)=>out+=`${k}: ${v}\n`);
+    out+='\n'+resText;
+    document.getElementById('rep-res').value=out;
+    const sc=res.status; const cls=sc<300?'s200':sc<400?'s300':sc<500?'s400':'s500';
+    document.getElementById('rep-status').innerHTML=`<span class="${cls}">${sc} ${res.statusText}</span>`;
+  }catch(e){document.getElementById('rep-res').value='Error: '+e.message;}
+}
+
+// ── proxy history (demo store) ─────────────────────────────────────────────
+function clearHistory(){history_store.length=0;renderHistory();}
+function renderHistory(){
+  const filter=document.getElementById('proxy-filter').value.toLowerCase();
+  const rows=history_store.filter(r=>!filter||(r.host+r.path+r.method+r.status).toLowerCase().includes(filter));
+  const tb=document.getElementById('history-body');
+  tb.innerHTML=rows.map((r,i)=>`<tr onclick="showReq(${i})">
+    <td>${r.id}</td>
+    <td class="method-${r.method.toLowerCase()}">${r.method}</td>
+    <td>${esc(r.host)}</td>
+    <td class="mono">${esc(r.path)}</td>
+    <td class="s${Math.floor(r.status/100)*100}">${r.status}</td>
+    <td>${r.length}</td></tr>`).join('');
+  document.getElementById('history-empty').style.display=rows.length?'none':'block';
+  document.getElementById('proxy-count').textContent=rows.length+' requests';
+}
+function showReq(i){
+  const r=history_store[i];
+  document.getElementById('proxy-req').value=r.request||'';
+  document.getElementById('proxy-res').value=r.response||'';
+}
+
+// ── intruder (UI only — calls CLI tool description) ───────────────────────
+function runIntruder(){
+  document.getElementById('intruder-status').innerHTML='<span class="warn">Intruder runs via CLI: ../.venv/bin/python3 modules/intruder.py &lt;request_file&gt; -p payloads.txt</span>';
+}
+
+// ── helpers ───────────────────────────────────────────────────────────────
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── init ──────────────────────────────────────────────────────────────────
+renderHistory();
+</script>
+</body>
+</html>
