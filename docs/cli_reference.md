@@ -1,5 +1,7 @@
 # CLI Reference
 
+> **Legal:** Run these commands only against systems you own or have explicit written authorisation to test. See the [legal notice](../README.md#legal) in the README.
+
 All commands run from the `catch403/` directory using the project venv.
 
 ```bash

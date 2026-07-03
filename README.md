@@ -2,7 +2,7 @@
 
 A Python-native web application security testing platform. Intercept, inspect, and attack HTTP/HTTPS traffic through a dark-themed browser UI — no Java, no licence fees, no rate-throttled Intruder.
 
-![Python](https://img.shields.io/badge/python-3.11+-blue) ![Tests](https://img.shields.io/badge/tests-170%20passing-4ec9a5) ![Modules](https://img.shields.io/badge/modules-50-4c8dff) ![License](https://img.shields.io/badge/license-MIT-9d7cff)
+![Python](https://img.shields.io/badge/python-3.11+-blue) ![Tests](https://img.shields.io/badge/tests-170%20passing-4ec9a5) ![Modules](https://img.shields.io/badge/modules-50-4c8dff) ![License](https://img.shields.io/badge/license-Authorised%20Use%20Only-red)
 
 ---
 
@@ -324,4 +324,17 @@ catch403/                    ← git repo root
 
 ## Legal
 
-Use only against systems you own or have explicit written authorisation to test. Unauthorised use against third-party systems is illegal in most jurisdictions.
+**Catch403 is an offensive security tool. Use it only against systems you own or have received explicit, written authorisation to test.**
+
+Unauthorised use against systems you do not own or do not have permission to test is illegal under the Computer Fraud and Abuse Act (US), the Computer Misuse Act (UK), and equivalent legislation in most jurisdictions worldwide. Penalties can include criminal prosecution, fines, and imprisonment.
+
+**By using this tool you confirm that:**
+
+- You have written permission from the system owner before running any scan or test
+- You are operating within the agreed scope of an authorised engagement
+- You accept full legal and ethical responsibility for how you use it
+- You will not use it to attack systems you do not have permission to test
+
+This software is provided for authorised penetration testing, security research, CTF competitions, and educational use only. The author accepts no liability for misuse or any damage caused by using this tool outside of those contexts.
+
+If you are unsure whether you have permission — you do not have permission.
