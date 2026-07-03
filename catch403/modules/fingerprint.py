@@ -24,6 +24,7 @@ import requests
 import urllib3
 
 from core.colors import bold, end, good, bad, info, run
+from core.auth_gate import preflight
 
 urllib3.disable_warnings()
 
@@ -299,6 +300,8 @@ def main():
     parser.add_argument("--cookie", default="")
     parser.add_argument("-o", dest="output", default="")
     args = parser.parse_args()
+
+    preflight('fingerprint', args.url, active=False)
 
     parsed = urllib.parse.urlparse(args.url)
     print(f"{run} Fingerprinting: {bold}{parsed.netloc}{parsed.path}{end}\n")

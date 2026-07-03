@@ -15,6 +15,7 @@ import requests
 import urllib3
 
 from core.colors import bold, underline, end, red, yellow, green, run, good, bad, info, tab
+from core.auth_gate import preflight
 
 urllib3.disable_warnings()
 
@@ -113,6 +114,8 @@ def main():
     parser.add_argument("--expected", type=int, default=403,
                         help="Expected blocked status code (default: 403)")
     args = parser.parse_args()
+    preflight('bypass_403', args.url, active=True)
+
     print(f"{run} Testing {bold}{args.url}/{args.path.lstrip('/')}{end}  (expecting {args.expected})")
     results = bypass(args.url, args.path, original_status=args.expected)
     print_results(results, args.expected)

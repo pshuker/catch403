@@ -19,6 +19,7 @@ import time
 import urllib.parse
 
 from core.colors import bold, underline, end, red, yellow, green, run, good, bad, info, tab
+from core.auth_gate import preflight
 
 CRLF = "\r\n"
 TIMEOUT_BASELINE = 5    # normal request timeout
@@ -164,6 +165,8 @@ def main():
     parser.add_argument("-u", dest="url",    required=True, help="Target URL")
     parser.add_argument("-m", dest="method", default="POST", help="HTTP method (default: POST)")
     args = parser.parse_args()
+    preflight('smuggler', args.url, active=True)
+
     scan(args.url, args.method.upper())
 
 

@@ -36,6 +36,7 @@ import requests
 import urllib3
 
 from core.colors import bold, end, good, bad, info, run
+from core.auth_gate import preflight
 
 urllib3.disable_warnings()
 
@@ -297,6 +298,8 @@ def main():
     parser.add_argument("-d", dest="body", default="", help="Request body")
     parser.add_argument("-o", dest="output", default="")
     args = parser.parse_args()
+
+    preflight('idor_scanner', args.url, active=True)
 
     urls: list[str] = []
     if args.url:

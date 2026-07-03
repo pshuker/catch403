@@ -22,6 +22,7 @@ import requests
 import urllib3
 
 from core.colors import bold, end, good, bad, info, run
+from core.auth_gate import preflight
 
 urllib3.disable_warnings()
 
@@ -252,6 +253,8 @@ def main():
     parser.add_argument("--port", type=int, default=443)
     parser.add_argument("-o", dest="output", default="")
     args = parser.parse_args()
+
+    preflight('ssl_tls_scanner', args.url, active=False)
 
     target = args.url or f"https://{args.host}:{args.port}"
     print(f"{run} SSL/TLS scan: {bold}{target}{end}\n")

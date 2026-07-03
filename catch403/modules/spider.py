@@ -19,6 +19,7 @@ import urllib.request
 from collections import deque
 
 from core.colors import bold, underline, end, red, yellow, green, run, good, bad, info, tab
+from core.auth_gate import preflight
 
 
 DEFAULT_UA = "Mozilla/5.0 (compatible; Catch403Spider/1.0)"
@@ -153,6 +154,8 @@ def main():
     parser.add_argument("-s", dest="delay",   type=float, default=0.0, help="Delay between requests (secs)")
     parser.add_argument("-v", dest="verbose", action="store_true", help="Verbose (show errors/files)")
     args = parser.parse_args()
+
+    preflight('spider', args.url, active=False)
 
     result = crawl(args.url, max_depth=args.depth, delay=args.delay, verbose=args.verbose)
     print_summary(result)

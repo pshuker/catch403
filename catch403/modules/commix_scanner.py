@@ -23,6 +23,7 @@ import tempfile
 import urllib.parse
 
 from core.colors import bold, end, good, bad, info, run
+from core.auth_gate import preflight
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _VENDOR = os.path.abspath(os.path.join(_HERE, "..", "..", "vendor", "commix", "commix.py"))
@@ -185,6 +186,8 @@ def main():
     parser.add_argument("--raw", action="store_true", help="Print raw commix output")
     parser.add_argument("-o", dest="output", default="")
     args = parser.parse_args()
+
+    preflight('commix_scanner', args.url, active=True)
 
     parsed = urllib.parse.urlparse(args.url)
     print(f"{run} Starting commix against {bold}{parsed.netloc}{parsed.path}{end}")

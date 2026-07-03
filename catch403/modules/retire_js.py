@@ -18,6 +18,7 @@ import requests
 import urllib3
 
 from core.colors import bold, underline, end, red, yellow, green, run, good, bad, info, tab
+from core.auth_gate import preflight
 
 urllib3.disable_warnings()
 
@@ -210,6 +211,8 @@ def main():
     parser = argparse.ArgumentParser(description="Detect vulnerable JavaScript libraries (like Burp Retire.js)")
     parser.add_argument("-u", dest="url", required=True, help="Target URL or JS file URL")
     args = parser.parse_args()
+    preflight('retire_js', args.url, active=False)
+
     findings = scan_url(args.url)
     print_findings(findings)
 

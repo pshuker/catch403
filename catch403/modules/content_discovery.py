@@ -27,6 +27,7 @@ import requests
 import urllib3
 
 from core.colors import bold, underline, end, red, yellow, green, run, good, bad, info, tab
+from core.auth_gate import preflight
 
 urllib3.disable_warnings()
 
@@ -216,6 +217,8 @@ def main():
     parser.add_argument("--cookie",  default="", help="Cookie string (key=val; key2=val2)")
     parser.add_argument("-o",  dest="output", help="Save JSON results to file")
     args = parser.parse_args()
+
+    preflight('content_discovery', args.url, active=True)
 
     wordlist = (WL.resolve(args.wordlist, "paths") if args.wordlist
                 else WL.paths()) or BUILTIN_WORDLIST

@@ -28,6 +28,7 @@ import requests
 import urllib3
 
 from core.colors import bold, end, good, bad, info, run
+from core.auth_gate import preflight
 
 urllib3.disable_warnings()
 
@@ -226,6 +227,8 @@ def main():
                         metavar="NAME:VALUE")
     parser.add_argument("-o", dest="output", default="")
     args = parser.parse_args()
+
+    preflight('open_redirect', args.url, active=True)
 
     custom_headers: dict = {}
     for h in args.headers:

@@ -24,6 +24,7 @@ import requests
 import urllib3
 
 from core.colors import bold, end, good, bad, info, run
+from core.auth_gate import preflight
 
 urllib3.disable_warnings()
 
@@ -249,6 +250,8 @@ def main():
     parser.add_argument("--cookie", default="")
     parser.add_argument("-o", dest="output", default="")
     args = parser.parse_args()
+
+    preflight('user_enum', args.url, active=True)
 
     usernames = (WL.resolve(args.wordlist, "usernames") if args.wordlist
                  else WL.usernames()) or BUILTIN_USERNAMES

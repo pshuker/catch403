@@ -18,6 +18,7 @@ import sys
 import requests
 
 from core.colors import bold, underline, end, red, yellow, green, run, good, bad, info, que, tab
+from core.auth_gate import preflight
 
 # ── pattern library ────────────────────────────────────────────────────────
 PATTERNS = [
@@ -124,6 +125,8 @@ def main():
     parser.add_argument("-s",   dest="severity", default="info",
                         choices=["high","medium","low","info"], help="Minimum severity to report")
     args = parser.parse_args()
+
+    preflight('secret_finder', args.url, active=False)
 
     min_sev = SEVERITY_ORDER[args.severity]
 

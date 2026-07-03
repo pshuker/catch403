@@ -17,6 +17,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from core.colors import bold, underline, end, red, green, run, good, bad, info, que, tab
+from core.auth_gate import preflight
 
 DEFAULT_WORDLIST = os.path.join(os.path.dirname(__file__), "common-params.txt")
 _REGISTRY_DEFAULT = "params"   # wordlists registry key
@@ -79,6 +80,8 @@ def main():
     parser.add_argument("--json",   dest="json_data", action="store_true", help="Send POST data as JSON")
     parser.add_argument("--header", dest="headers",  nargs="*", help="Extra headers (key:value)")
     args = parser.parse_args()
+
+    preflight('param_miner', args.url, active=True)
 
     extra_headers: dict = {}
     if args.headers:

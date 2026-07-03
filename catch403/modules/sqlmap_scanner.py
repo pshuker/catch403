@@ -25,6 +25,7 @@ import tempfile
 import urllib.parse
 
 from core.colors import bold, end, good, bad, info, run
+from core.auth_gate import preflight
 
 # ── sqlmap binary location ─────────────────────────────────────────────────
 
@@ -315,6 +316,8 @@ def main():
     parser.add_argument("-o", dest="output", default="",
                         help="Save findings to JSON file")
     args = parser.parse_args()
+
+    preflight('sqlmap_scanner', args.url, active=True)
 
     parsed = urllib.parse.urlparse(args.url)
     print(f"{run} Starting sqlmap against {bold}{parsed.netloc}{parsed.path}{end}")

@@ -25,6 +25,7 @@ import requests
 import urllib3
 
 from core.colors import bold, underline, end, red, yellow, green, run, good, bad, info, tab
+from core.auth_gate import preflight
 
 urllib3.disable_warnings()
 
@@ -284,6 +285,8 @@ def main():
     parser.add_argument("--cookie",     default="", help="Cookie string")
     parser.add_argument("-o",           dest="output", help="Save JSON report to file")
     args = parser.parse_args()
+
+    preflight('graphql_raider', args.url, active=True)
 
     headers = {}
     for h in (args.headers or []):

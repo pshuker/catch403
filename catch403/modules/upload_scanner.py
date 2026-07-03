@@ -17,6 +17,7 @@ import requests
 import urllib3
 
 from core.colors import bold, underline, end, red, yellow, green, run, good, bad, info, tab
+from core.auth_gate import preflight
 
 urllib3.disable_warnings()
 
@@ -148,6 +149,8 @@ def main():
     parser.add_argument("--cookie",dest="cookie",default="",
                         help="Session cookie string")
     args = parser.parse_args()
+
+    preflight('upload_scanner', args.url, active=True)
 
     extra = {}
     if args.extra:
