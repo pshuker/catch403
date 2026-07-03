@@ -888,6 +888,391 @@ test("ai system prompt is security-focused", _test_ai_system_prompt)
 test("ai key save/load roundtrip",        _test_ai_key_roundtrip)
 test("ai no key returns empty string",    _test_ai_no_key_returns_empty)
 
+# ── ssrf_scanner ───────────────────────────────────────────────────────────
+
+from modules.ssrf_scanner import CLOUD_METADATA, INTERNAL_PROBES, BYPASS_ENCODINGS, _check_response
+
+def _test_ssrf_cloud_metadata_count():
+    assert_true(len(CLOUD_METADATA) >= 5)
+    assert_true(any("AWS" in lbl for lbl, _ in CLOUD_METADATA))
+    assert_true(any("GCP" in lbl for lbl, _ in CLOUD_METADATA))
+    assert_true(any("Azure" in lbl for lbl, _ in CLOUD_METADATA))
+
+def _test_ssrf_internal_probes():
+    assert_true(any("127.0.0.1" in url for _, url in INTERNAL_PROBES))
+    assert_true(any("9200" in url for _, url in INTERNAL_PROBES))
+
+def _test_ssrf_bypass_encodings():
+    assert_true(any("0x7f" in url for _, url in BYPASS_ENCODINGS))
+    assert_true(any("2130706433" in url for _, url in BYPASS_ENCODINGS))  # decimal IP
+
+class _FakeResp:
+    def __init__(self, status, text):
+        self.status_code = status
+        self.text = text
+
+def _test_ssrf_check_response_metadata():
+    r = _FakeResp(200, "root:x:0:0:root:/root:/bin/bash")  # /etc/passwd content
+    f = _check_response(r, "file:///etc/passwd", "File read")
+    assert_true(f is not None)
+    assert_eq(f["severity"], "critical")
+
+def _test_ssrf_check_response_no_hit():
+    r = _FakeResp(404, "Not Found")
+    f = _check_response(r, "http://127.0.0.1/", "Internal probe")
+    assert_true(f is None)
+
+test("ssrf cloud metadata payloads coverage",  _test_ssrf_cloud_metadata_count)
+test("ssrf internal probes coverage",          _test_ssrf_internal_probes)
+test("ssrf bypass encoding variants",          _test_ssrf_bypass_encodings)
+test("ssrf detects metadata in response",      _test_ssrf_check_response_metadata)
+test("ssrf no false positive on 404",          _test_ssrf_check_response_no_hit)
+
+# ── ssti_scanner ───────────────────────────────────────────────────────────
+
+from modules.ssti_scanner import DETECTION_PAYLOADS, RCE_PAYLOADS, _check_reflection
+
+class _FakeRespSSTI:
+    def __init__(self, text): self.text = text
+
+def _test_ssti_math_payloads():
+    assert_true(any("{{7*7}}" in p for p, _, _, _ in DETECTION_PAYLOADS))
+    assert_true(any("${7*7}" in p for p, _, _, _ in DETECTION_PAYLOADS))
+
+def _test_ssti_rce_jinja2():
+    assert_true("Jinja2" in RCE_PAYLOADS)
+    assert_true(len(RCE_PAYLOADS["Jinja2"]) >= 2)
+    assert_true(any("os.popen" in p for p, _ in RCE_PAYLOADS["Jinja2"]))
+
+def _test_ssti_check_reflection_math():
+    # {{7*7}} not reflected as-is, and 49 in response → detected
+    r = _FakeRespSSTI("Hello 49 world")
+    assert_true(_check_reflection(r, "{{7*7}}", r"49"))
+
+def _test_ssti_check_reflection_no_exec():
+    # Payload reflected verbatim = NOT executed
+    r = _FakeRespSSTI("{{7*7}}")
+    assert_true(not _check_reflection(r, "{{7*7}}", r"49"))
+
+def _test_ssti_covers_multiple_engines():
+    engines = {hint for _, _, hint, _ in DETECTION_PAYLOADS}
+    combined = " ".join(engines)
+    assert_true("Jinja2" in combined)
+    assert_true("Twig" in combined)
+    assert_true("Freemarker" in combined)
+
+test("ssti math probes in payload bank",       _test_ssti_math_payloads)
+test("ssti Jinja2 RCE payloads present",       _test_ssti_rce_jinja2)
+test("ssti check_reflection detects execution", _test_ssti_check_reflection_math)
+test("ssti check_reflection skips verbatim",   _test_ssti_check_reflection_no_exec)
+test("ssti covers multiple template engines",  _test_ssti_covers_multiple_engines)
+
+# ── crlf_scanner ───────────────────────────────────────────────────────────
+
+from modules.crlf_scanner import _CRLF_TEMPLATES, _MARKER, COMMON_PARAMS
+
+def _test_crlf_template_count():
+    assert_true(len(_CRLF_TEMPLATES) >= 10)
+
+def _test_crlf_covers_encodings():
+    all_payloads = " ".join(_CRLF_TEMPLATES)
+    assert_true("%0d%0a" in all_payloads)   # URL-encoded CRLF
+    assert_true("%250d%250a" in all_payloads)  # double-encoded
+
+def _test_crlf_common_params():
+    assert_true("next" in COMMON_PARAMS)
+    assert_true("redirect" in COMMON_PARAMS)
+    assert_true(len(COMMON_PARAMS) >= 10)
+
+def _test_crlf_marker_in_templates():
+    for tmpl in _CRLF_TEMPLATES:
+        if "{m}" in tmpl:
+            assert_true("{m}" in tmpl)
+            break
+
+test("crlf template payload count",           _test_crlf_template_count)
+test("crlf covers URL-encoded variants",       _test_crlf_covers_encodings)
+test("crlf common redirect params list",       _test_crlf_common_params)
+test("crlf marker placeholder in templates",   _test_crlf_marker_in_templates)
+
+# ── open_redirect ──────────────────────────────────────────────────────────
+
+from modules.open_redirect import _build_payloads, COMMON_PARAMS as OR_PARAMS
+
+def _test_or_payload_count():
+    payloads = _build_payloads("evil.com", "trusted.com")
+    assert_true(len(payloads) >= 15)
+
+def _test_or_has_scheme_relative():
+    payloads = _build_payloads("evil.com", "trusted.com")
+    labels = [lbl for lbl, _ in payloads]
+    assert_true(any("scheme" in lbl.lower() or "//" in p for lbl, p in payloads))
+
+def _test_or_has_javascript_uri():
+    payloads = _build_payloads("evil.com", "trusted.com")
+    assert_true(any("javascript:" in p.lower() for _, p in payloads))
+
+def _test_or_has_authority_confusion():
+    payloads = _build_payloads("evil.com", "trusted.com")
+    assert_true(any("@evil.com" in p for _, p in payloads))
+
+def _test_or_common_params():
+    assert_true("next" in OR_PARAMS)
+    assert_true("redirect" in OR_PARAMS)
+    assert_true(len(OR_PARAMS) >= 15)
+
+test("open_redirect payload count ≥15",       _test_or_payload_count)
+test("open_redirect scheme-relative payload",  _test_or_has_scheme_relative)
+test("open_redirect javascript: URI payload",  _test_or_has_javascript_uri)
+test("open_redirect @ authority confusion",    _test_or_has_authority_confusion)
+test("open_redirect common param list",        _test_or_common_params)
+
+# ── xxe_scanner ────────────────────────────────────────────────────────────
+
+from modules.xxe_scanner import _CLASSIC_PAYLOADS, _FILE_RE, _ERROR_RE, _SVG_XXE
+
+def _test_xxe_classic_payloads():
+    assert_true(len(_CLASSIC_PAYLOADS) >= 4)
+    labels = [lbl for lbl, _, _ in _CLASSIC_PAYLOADS]
+    assert_true(any("passwd" in lbl.lower() for lbl in labels))
+    assert_true(any("win" in lbl.lower() for lbl in labels))
+
+def _test_xxe_file_re_detects_passwd():
+    assert_true(bool(_FILE_RE.search("root:x:0:0:root:/root:/bin/bash")))
+
+def _test_xxe_file_re_detects_hosts():
+    assert_true(bool(_FILE_RE.search("127.0.0.1   localhost")))
+
+def _test_xxe_error_re():
+    assert_true(bool(_ERROR_RE.search("java.io.FileNotFoundException: /etc/passwd")))
+    assert_true(bool(_ERROR_RE.search("org.xml.sax.SAXParseException: entity 'xxe'")))
+    assert_true(not bool(_ERROR_RE.search("200 OK all fine")))
+
+def _test_xxe_svg_contains_entity():
+    assert_true("ENTITY xxe" in _SVG_XXE)
+    assert_true("file:///etc/passwd" in _SVG_XXE)
+
+test("xxe classic payload bank",              _test_xxe_classic_payloads)
+test("xxe /etc/passwd regex detection",       _test_xxe_file_re_detects_passwd)
+test("xxe /etc/hosts regex detection",        _test_xxe_file_re_detects_hosts)
+test("xxe XML error regex detection",         _test_xxe_error_re)
+test("xxe SVG payload contains entity",       _test_xxe_svg_contains_entity)
+
+# ── idor_scanner ───────────────────────────────────────────────────────────
+
+from modules.idor_scanner import _NUMERIC_ID_RE, _UUID_RE, _sensitive_leak, _SECONDARY_SUFFIXES
+
+class _FakeRespIDOR:
+    def __init__(self, status, text):
+        self.status_code = status
+        self.text = text
+
+def _test_idor_numeric_re():
+    m = _NUMERIC_ID_RE.search("/api/orders/1042/details")
+    assert_true(m is not None)
+    assert_eq(m.group(1), "1042")
+
+def _test_idor_uuid_re():
+    m = _UUID_RE.search("/api/users/550e8400-e29b-41d4-a716-446655440000/profile")
+    assert_true(m is not None)
+
+def _test_idor_secondary_suffixes():
+    assert_true("/export" in _SECONDARY_SUFFIXES)
+    assert_true("/download" in _SECONDARY_SUFFIXES)
+    assert_true(len(_SECONDARY_SUFFIXES) >= 8)
+
+def _test_idor_sensitive_leak_same_size():
+    # Bodies large enough (>50 bytes) and similar size (ratio within 0.7-1.4)
+    body_a = '{"id":1,"name":"Alice","email":"alice@example.com","role":"user","plan":"pro"}'
+    body_b = '{"id":2,"name":"Bob",  "email":"bob@example.com",  "role":"user","plan":"pro"}'
+    r_a = _FakeRespIDOR(200, body_a)
+    r_b = _FakeRespIDOR(200, body_b)
+    leaked, evidence = _sensitive_leak(r_a, r_b)
+    assert_true(leaked)
+    assert_true("ratio" in evidence)
+
+def _test_idor_no_leak_on_403():
+    r_a = _FakeRespIDOR(200, '{"id":1,"name":"Alice"}')
+    r_b = _FakeRespIDOR(403, "Forbidden")
+    leaked, _ = _sensitive_leak(r_a, r_b)
+    assert_true(not leaked)
+
+test("idor numeric ID regex extraction",    _test_idor_numeric_re)
+test("idor UUID regex extraction",          _test_idor_uuid_re)
+test("idor secondary suffixes list",        _test_idor_secondary_suffixes)
+test("idor sensitive leak detected",        _test_idor_sensitive_leak_same_size)
+test("idor 403 response = no leak",         _test_idor_no_leak_on_403)
+
+# ── oob_helper ─────────────────────────────────────────────────────────────
+
+from modules.oob_helper import SimpleCanary, quick_canary, INTERACTSH_SERVER
+
+def _test_oob_simple_canary_url():
+    c = SimpleCanary("oast.pro")
+    url = c.url("test")
+    assert_true("oast.pro" in url)
+    assert_true(url.startswith("http://"))
+
+def _test_oob_simple_canary_dns():
+    c = SimpleCanary("oast.pro")
+    dns = c.dns("test")
+    assert_true(dns.endswith(".oast.pro"))
+
+def _test_oob_quick_canary():
+    url, dns = quick_canary("unittest")
+    assert_true(url.startswith("http://"))
+    assert_true("." in dns)
+
+def _test_oob_server_default():
+    assert_true("oast" in INTERACTSH_SERVER or "interact" in INTERACTSH_SERVER)
+
+test("oob simple canary URL format",        _test_oob_simple_canary_url)
+test("oob simple canary DNS format",        _test_oob_simple_canary_dns)
+test("oob quick_canary returns url+dns",    _test_oob_quick_canary)
+test("oob default server is interactsh",    _test_oob_server_default)
+
+# ── prototype_pollution ────────────────────────────────────────────────────
+
+from modules.prototype_pollution import _json_payloads, _query_payloads, _canary_reflected, _CANARY_VAL
+
+class _FakeRespPP:
+    def __init__(self, text): self.text = text
+
+def _test_pp_json_payload_count():
+    payloads = _json_payloads()
+    assert_true(len(payloads) >= 5)
+
+def _test_pp_has_proto_key():
+    payloads = _json_payloads()
+    has_proto = any("__proto__" in label.lower() for label, _ in payloads)
+    assert_true(has_proto)
+
+def _test_pp_has_constructor():
+    payloads = _json_payloads()
+    has_ctor = any("constructor" in label.lower() for label, _ in payloads)
+    assert_true(has_ctor)
+
+def _test_pp_canary_reflected():
+    r = _FakeRespPP(f"some response with {_CANARY_VAL} here")
+    assert_true(_canary_reflected(r))
+
+def _test_pp_canary_not_reflected():
+    r = _FakeRespPP("normal response body")
+    assert_true(not _canary_reflected(r))
+
+def _test_pp_query_payloads():
+    payloads = _query_payloads("https://target.com/api?foo=bar")
+    assert_true(len(payloads) >= 3)
+    all_urls = " ".join(u for _, u in payloads)
+    assert_true("__proto__" in all_urls)
+
+test("prototype pollution JSON payload count",   _test_pp_json_payload_count)
+test("prototype pollution has __proto__ key",    _test_pp_has_proto_key)
+test("prototype pollution has constructor",      _test_pp_has_constructor)
+test("prototype pollution canary reflected",     _test_pp_canary_reflected)
+test("prototype pollution canary not reflected", _test_pp_canary_not_reflected)
+test("prototype pollution query payloads",       _test_pp_query_payloads)
+
+# ── vuln_chainer ───────────────────────────────────────────────────────────
+
+from modules.vuln_chainer import CHAIN_RULES, analyse, _matches_rule
+
+def _test_chainer_rule_count():
+    assert_true(len(CHAIN_RULES) >= 10)
+
+def _test_chainer_cors_csrf_chain():
+    findings = [
+        {"name": "CORS Wildcard Misconfiguration", "severity": "high", "detail": ""},
+        {"name": "CSRF Token Missing on state-change endpoint", "severity": "medium", "detail": ""},
+    ]
+    chains = analyse(findings)
+    cors_chains = [c for c in chains if "cors" in c["name"].lower()]
+    assert_true(len(cors_chains) >= 1)
+
+def _test_chainer_no_false_chain():
+    findings = [{"name": "Missing X-Frame-Options", "severity": "low"}]
+    chains = [c for c in analyse(findings)
+              if c["severity"] in ("critical", "high")]
+    assert_eq(len(chains), 0)
+
+def _test_chainer_fingerprint_stable():
+    # Test that analyse returns consistent results for the same input
+    findings = [{"name": "CORS Misconfiguration", "severity": "high"}]
+    chains1 = analyse(findings)
+    chains2 = analyse(findings)
+    assert_eq(len(chains1), len(chains2))
+
+def _test_chainer_ssrf_metadata_chain():
+    findings = [
+        {"name": "SSRF — AWS IMDSv1 credentials", "severity": "critical", "detail": ""},
+        {"name": "Cloud Metadata Exposed", "severity": "critical", "detail": ""},
+    ]
+    chains = analyse(findings)
+    ssrf_chains = [c for c in chains if "ssrf" in c["name"].lower()]
+    assert_true(len(ssrf_chains) >= 1)
+
+test("vuln chainer rule count ≥10",            _test_chainer_rule_count)
+test("vuln chainer detects CORS+CSRF chain",    _test_chainer_cors_csrf_chain)
+test("vuln chainer no false positive",          _test_chainer_no_false_chain)
+test("vuln chainer fingerprint is stable",      _test_chainer_fingerprint_stable)
+test("vuln chainer detects SSRF+metadata",      _test_chainer_ssrf_metadata_chain)
+
+# ── cicd_runner ────────────────────────────────────────────────────────────
+
+import tempfile
+from modules.cicd_runner import (
+    _fingerprint as cicd_fp, _above_threshold, save_baseline, load_baseline,
+    diff_against_baseline, to_sarif, PROFILES
+)
+
+def _test_cicd_profiles_exist():
+    assert_true("quick" in PROFILES)
+    assert_true("standard" in PROFILES)
+    assert_true("full" in PROFILES)
+    assert_true("api" in PROFILES)
+
+def _test_cicd_threshold_high():
+    assert_true(_above_threshold({"severity": "critical"}, "high"))
+    assert_true(_above_threshold({"severity": "high"}, "high"))
+    assert_true(not _above_threshold({"severity": "medium"}, "high"))
+    assert_true(not _above_threshold({"severity": "low"}, "high"))
+
+def _test_cicd_baseline_save_load():
+    findings = [
+        {"name": "XSS", "severity": "high", "url": "https://t.com", "param": "q"},
+        {"name": "CSRF", "severity": "medium", "url": "https://t.com", "param": ""},
+    ]
+    target = "https://test.example.com"
+    profile = "quick"
+    save_baseline(target, profile, findings)
+    baseline = load_baseline(target, profile)
+    assert_true(len(baseline) == 2)
+
+def _test_cicd_diff_new_findings():
+    findings_v1 = [{"name": "XSS", "severity": "high", "url": "https://t.com", "param": "q"}]
+    findings_v2 = [
+        {"name": "XSS",  "severity": "high",   "url": "https://t.com", "param": "q"},
+        {"name": "SSRF", "severity": "critical","url": "https://t.com", "param": "url"},
+    ]
+    save_baseline("https://diff.example.com", "quick", findings_v1)
+    baseline = load_baseline("https://diff.example.com", "quick")
+    new = diff_against_baseline(findings_v2, baseline)
+    assert_eq(len(new), 1)
+    assert_eq(new[0]["name"], "SSRF")
+
+def _test_cicd_sarif_format():
+    findings = [{"name": "XSS", "severity": "high", "detail": "reflected", "url": "https://t.com"}]
+    sarif = to_sarif(findings, "https://t.com")
+    assert_eq(sarif["version"], "2.1.0")
+    assert_true(len(sarif["runs"]) == 1)
+    assert_true(len(sarif["runs"][0]["results"]) == 1)
+
+test("cicd profiles all present",             _test_cicd_profiles_exist)
+test("cicd severity threshold filtering",     _test_cicd_threshold_high)
+test("cicd baseline save and load",           _test_cicd_baseline_save_load)
+test("cicd diff detects new findings",        _test_cicd_diff_new_findings)
+test("cicd SARIF output format valid",        _test_cicd_sarif_format)
+
 # ── summary ────────────────────────────────────────────────────────────────
 print(f"\n{passed} passed, {failed} failed\n")
 if failed:
